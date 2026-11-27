@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My VYBE</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="community.css"></head>
 <body>
 <main class="community" data-page="my">
-<nav class="community-nav" aria-label="주 메뉴"><a class="mark" href="./">VYBE</a><div><a href="feed.html">Feed</a><a href="my.html#saved">Saved</a><a data-account href="./?account=1">Account</a></div></nav>
+<nav class="community-nav" aria-label="주 메뉴"><a class="mark" href="./">VYBE</a><div><a href="trends.html">Trends</a><a href="feed.html">Feed</a><a href="saved.html">Saved</a><a data-account href="./?account=1">Account</a></div></nav>
 <h1>My VYBE</h1>
 <p id="member-status" role="status">로그인 상태 확인 중…</p>
 <a id="login-link" href="./?account=1" hidden>로그인하기</a>
@@ -14,9 +14,9 @@
 <p id="counts" role="status"></p>
 <button class="save-button" id="open-post" type="button">코디 올리기</button>
 <details class="account-settings"><summary>계정 설정</summary><p id="member-email"></p><button class="save-button" id="logout" type="button">로그아웃</button></details>
-<nav class="view-tabs" aria-label="마이페이지 메뉴"><a href="#posts-tab">내 게시물</a><a href="#saved">저장한 코디</a></nav>
+<nav class="view-tabs" aria-label="마이페이지 메뉴"><a href="#posts-tab">내 게시물</a><a href="saved.html">저장한 코디</a></nav>
 <section id="posts-tab"><h2>내 게시물</h2><p id="feed-status" role="status"></p><ul class="outfits" id="posts"></ul></section>
-<section id="saved" hidden><h2>저장한 VYBE 추천 코디</h2><p id="saved-status" role="status"></p><ul id="saved-list"></ul></section>
+
 </div>
 
 <dialog id="post-dialog" aria-labelledby="post-title">
