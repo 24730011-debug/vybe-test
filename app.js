@@ -144,3 +144,10 @@ if (location.protocol === 'file:') {
   });
   document.querySelector('#account-close').addEventListener('click', () => document.querySelector('#account').close());
 }
+
+const feedLink = document.createElement('a');
+feedLink.href = 'feed.html';
+feedLink.className = 'quiet';
+feedLink.textContent = 'Feed';
+feedLink.style.textDecoration = 'none';
+savedNav.before(feedLink);
