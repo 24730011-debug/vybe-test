@@ -121,11 +121,17 @@ document.addEventListener('click', event => {
   if (button.hasAttribute('data-retry-saved') && account) void loadAccountSaves(account);
 });
 savedNav.addEventListener('click', () => {
-  visibleLook = null;
-  title.textContent = 'Saved Looks';
-  renderSavedList();
-  panel.showModal();
+  if (location.protocol === 'file:') {
+    visibleLook = null;
+    title.textContent = 'Saved Looks';
+    renderSavedList();
+    panel.showModal();
+    return;
+  }
+  location.href = 'saved.html';
 });
+const requestedLook = new URLSearchParams(location.search).get('look');
+if (requestedLook && Object.hasOwn(looks, requestedLook)) showLook(requestedLook);
 panel.querySelector('.close').addEventListener('click', () => panel.close());
 document.querySelector('#pause').addEventListener('click', event => {
   const button = event.currentTarget;
@@ -151,3 +157,8 @@ feedLink.className = 'quiet';
 feedLink.textContent = 'Feed';
 feedLink.style.textDecoration = 'none';
 savedNav.before(feedLink);
+
+const trendsLink = feedLink.cloneNode(false);
+trendsLink.href = 'trends.html';
+trendsLink.textContent = 'Trends';
+feedLink.before(trendsLink);
