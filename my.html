@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My VYBE</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="community.css"></head>
+<body>
+<main class="community" data-page="my">
+<nav class="community-nav" aria-label="주 메뉴"><a class="mark" href="./">VYBE</a><div><a href="feed.html">Feed</a><a href="my.html#saved">Saved</a><a data-account href="./?account=1">Account</a></div></nav>
+<h1>My VYBE</h1>
+<p id="member-status" role="status">로그인 상태 확인 중…</p>
+<a id="login-link" href="./?account=1" hidden>로그인하기</a>
+<div id="member" hidden>
+<header class="member-profile">
+<span id="avatar" class="avatar" aria-hidden="true">V</span><div><h2 id="nickname">My VYBE</h2><button class="save-button" id="edit-profile" type="button">프로필 수정</button></div>
+</header>
+<p id="counts" role="status"></p>
+<button class="save-button" id="open-post" type="button">코디 올리기</button>
+<details class="account-settings"><summary>계정 설정</summary><p id="member-email"></p><button class="save-button" id="logout" type="button">로그아웃</button></details>
+<nav class="view-tabs" aria-label="마이페이지 메뉴"><a href="#posts-tab">내 게시물</a><a href="#saved">저장한 코디</a></nav>
+<section id="posts-tab"><h2>내 게시물</h2><p id="feed-status" role="status"></p><ul class="outfits" id="posts"></ul></section>
+<section id="saved" hidden><h2>저장한 VYBE 추천 코디</h2><p id="saved-status" role="status"></p><ul id="saved-list"></ul></section>
+</div>
+
+<dialog id="post-dialog" aria-labelledby="post-title">
+<div class="dialog-head"><h2 id="post-title">코디 올리기</h2><button type="button" class="close" data-close aria-label="닫기">×</button></div>
+<form id="outfit-form">
+<label for="outfit-photo">코디 사진</label><input id="outfit-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required>
+<small>JPG, PNG, WebP · 최대 5 MB</small>
+<label for="outfit-title">제목</label><input id="outfit-title" name="title" maxlength="80" required>
+<label for="outfit-caption">코디 설명</label><textarea id="outfit-caption" name="caption" maxlength="500" rows="3"></textarea>
+<label for="outfit-trend">관련 트렌드 (선택)</label><select id="outfit-trend" name="trend"><option value="">선택 안 함</option><option value="faux-fur">페이크 퍼 아우터</option></select>
+<label><input type="checkbox" name="publicConsent" required> 사진과 글이 공개 피드에 표시되는 데 동의해요.</label>
+<p id="post-status" role="status"></p><button class="save-button">코디 올리기</button>
+</form>
+</dialog>
+
+<dialog id="profile-dialog" aria-labelledby="profile-title">
+<div class="dialog-head"><h2 id="profile-title">프로필 수정</h2><button type="button" class="close" data-close aria-label="닫기">×</button></div>
+<form id="profile-form">
+<label for="profile-nickname">닉네임</label><input id="profile-nickname" name="nickname" maxlength="40" required>
+<label for="profile-avatar">공개 프로필 이미지 주소 (선택)</label><input id="profile-avatar" name="avatar" type="url" placeholder="https://" maxlength="500">
+<p id="profile-status" role="status"></p><button class="save-button">저장</button>
+</form>
+</dialog>
+</main>
+<script type="module" src="community.js"></script>
+</body>
+</html>
