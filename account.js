@@ -100,7 +100,10 @@ signOut.addEventListener('click', async () => {
 try {
   if (!['https:', 'http:'].includes(location.protocol)) throw new Error('HTTP host required');
   auth = await connectAuth();
-  auth.subscribe((event, currentUser) => {
+  auth.subscribe((event, currentUser, savedLooks) => {
+    document.dispatchEvent(new CustomEvent('vybe:account', {
+      detail: { userId: currentUser?.id ?? null, savedLooks }
+    }));
     ready = true;
     user = currentUser;
     if (handleEmailReturn && (callbackError || user || event === 'INITIAL_SESSION')) {
