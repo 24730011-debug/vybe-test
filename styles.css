@@ -4,3 +4,4 @@
 #auth-form input{margin:4px 0 14px;padding:8px;border:1px solid #8f9fae;font:inherit}
 .account-switch{margin-left:10px;border:0;background:none;text-decoration:underline}
 #auth-status:empty{display:none}
+@media(max-width:540px){.hero nav{align-items:flex-start;gap:10px}.account-actions{justify-content:flex-end;flex-wrap:wrap;gap:5px}.account-actions .quiet{font-size:.8rem;padding:.3rem .45rem}}
