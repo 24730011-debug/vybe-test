@@ -39,6 +39,7 @@ function message(error, fallback) {
 }
 
 open.addEventListener('click', () => {
+  if (user) { location.href = 'my.html'; return; }
   if (!ready) status.textContent = unavailable ? '인증 서비스에 연결하지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.' : '인증 서비스에 연결 중이에요.';
   dialog.showModal();
 });
@@ -115,6 +116,12 @@ try {
       status.textContent = '';
     }
     render();
+    if (query.get('account') === '1' && !handleEmailReturn && !dialog.open) {
+      query.delete('account');
+      history.replaceState(null, '', location.pathname + (query.size ? '?' + query : '') + location.hash);
+      if (user) location.href = 'my.html';
+      else dialog.showModal();
+    }
   });
 } catch {
   unavailable = true;
