@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYBE — Outfit Feed</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+.feed{max-width:1080px;margin:auto;padding:36px 24px 60px}.feed-nav{display:flex;justify-content:space-between;align-items:center;gap:16px}.feed h1{font-weight:400;font-size:clamp(2rem,6vw,4rem);margin-bottom:0}.feed form{max-width:460px;margin:20px 0}.feed label{display:block;margin-top:12px}.feed input:not([type=checkbox]),.feed textarea{display:block;width:100%;font:inherit;padding:6px}.feed form button{margin-top:14px}.outfits{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:20px;list-style:none;padding:0}.outfits li{border-top:1px solid #8f9fae;padding-top:8px;min-width:0}.outfits img{width:100%;aspect-ratio:4/5;object-fit:cover}.outfits h3,.outfits p{overflow-wrap:anywhere;white-space:pre-wrap}.sample{margin-top:30px}.sample .outfits li{padding-bottom:10px}
+</style>
+</head>
+<body>
+<main class="feed">
+<nav class="feed-nav" aria-label="주 메뉴"><a class="mark" href="./">VYBE</a><a href="./">Home / Account</a></nav>
+<h1>Outfit Feed</h1>
+<p id="feed-auth">로그인 상태 확인 중…</p>
+<form id="outfit-form" hidden>
+<label for="outfit-photo">코디 사진</label>
+<input id="outfit-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required aria-describedby="photo-hint">
+<small id="photo-hint">JPG, PNG, WebP · 최대 5 MB</small>
+<label for="outfit-title">제목</label>
+<input id="outfit-title" name="title" maxlength="80" required>
+<label for="outfit-caption">코디 설명</label>
+<textarea id="outfit-caption" name="caption" maxlength="500" rows="3"></textarea>
+<label><input type="checkbox" name="publicConsent" required> 사진과 글이 공개 피드에 표시되는 데 동의해요.</label>
+<button class="save-button" type="submit">코디 올리기</button>
+</form>
+<p id="post-status" role="status"></p>
+<h2>Latest</h2>
+<p id="feed-status" role="status"></p>
+<ul class="outfits" id="posts"></ul>
+<section class="sample" aria-labelledby="sample-title">
+<h2 id="sample-title">Sample Looks</h2>
+<p>피드 미리보기용 가상 예시예요.</p>
+<ul class="outfits">
+<li><h3>Weekend</h3><p>페이크 퍼 · 골지 니트 · 워싱 데님</p></li>
+<li><h3>Office</h3><p>페이크 퍼 · 목폴라 · 차콜 슬랙스</p></li>
+<li><h3>Evening</h3><p>페이크 퍼 · 미디스커트 · 롱부츠</p></li>
+</ul>
+</section>
+</main>
+<script type="module" src="feed.js"></script>
+</body>
+</html>
