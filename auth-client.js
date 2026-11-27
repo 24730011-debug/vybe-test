@@ -3,9 +3,11 @@ const publishableKey = 'sb_publishable_dBLckHS02fNHtG0LIQhUuA_tEIZiLzd';
 
 export async function connectAuth() {
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-  const { auth } = createClient(projectUrl, publishableKey);
+  const client = createClient(projectUrl, publishableKey);
+  const { auth } = client;
   const confirmationUrl = new URL(location.pathname, location.origin).href;
   return {
+    client,
     subscribe(callback) {
       return auth.onAuthStateChange((event, session) => callback(event, session?.user ?? null, session ? accountSavedLooks(session) : null));
     },
