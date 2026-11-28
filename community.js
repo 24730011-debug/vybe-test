@@ -431,10 +431,10 @@ try {
           if ((user?.id ?? null) !== owner) return;
           if (page === 'saved') await loadSavedPage(savedLooks);
           else await refreshTaste(savedLooks);
-          if (!myPage && page !== 'trends' && (page !== 'profile' || validProfile)) await reloadPosts();
+          if (!myPage && page !== 'trends' && page !== 'personal' && (page !== 'profile' || validProfile)) await reloadPosts();
           if (myPage && user) await loadMember(owner, savedLooks);
         } catch {
-          (authStatus || feedStatus).textContent = '정보를 불러오지 못했어요. 새로고침해 주세요.';
+          if(authStatus||feedStatus)(authStatus || feedStatus).textContent = '정보를 불러오지 못했어요. 새로고침해 주세요.';
         }
       }, 0);
     }
