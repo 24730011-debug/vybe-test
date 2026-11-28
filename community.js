@@ -61,6 +61,7 @@ async function loadFeed(owner = null) {
     if (owner) ownPostsResult = result.count;
     posts.replaceChildren(...rows.map(row => {
       const item = document.createElement('li');
+      item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
       const heading = document.createElement('h3');
       heading.textContent = row.title;
       const caption = document.createElement('p');
@@ -98,7 +99,8 @@ async function loadFeed(owner = null) {
       }
       return item;
     }));
-    feedStatus.textContent = rows.length ? '' : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'아직 표시할 실제 회원 코디가 없어요. 아래 샘플을 둘러보세요.':'아직 올린 코디가 없어요.';
+    if(page==='feed')document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));
+    feedStatus.textContent = rows.length ? '' : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
   } catch {
     if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
     feedStatus.textContent = '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
