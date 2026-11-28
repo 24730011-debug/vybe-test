@@ -132,6 +132,7 @@ function openDetail(title) {
 }
 
 function showPost(row, url) {
+  window.VYBEUI?.recordMemberView(row);
   const dialog = openDetail(row.title);
   if (url) {
     const image = document.createElement('img');
@@ -163,7 +164,7 @@ async function changeReaction(button, table, selected, postId) {
     if (selected.has(postId)) selected.delete(postId);
     else selected.add(postId);
     await reloadPosts();
-    if(table==='saved_outfits')await refreshTaste(currentSavedAdapter);
+    await refreshTaste(currentSavedAdapter);
   } catch {
     statusForActions.textContent = '변경하지 못했어요. 다시 시도해 주세요.';
   } finally {
@@ -236,8 +237,8 @@ function deletePost(row) {
 
 async function loadReactions(owner) {
   const results = owner ? await Promise.all([
-    client.from('outfit_likes').select('post_id'),
-    client.from('saved_outfits').select('post_id')
+    client.from('outfit_likes').select('post_id').eq('user_id',owner),
+    client.from('saved_outfits').select('post_id').eq('user_id',owner)
   ]) : [];
   if ((user?.id || null) !== owner) return;
   const next = results.map(requireSuccess);
@@ -246,11 +247,23 @@ async function loadReactions(owner) {
 }
 
 function readGuestLooks(){try{const v=JSON.parse(localStorage.getItem('vybe.winter.saved')||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+let tasteRefreshVersion=0;
 async function refreshTaste(adapter,idsOverride){
-  const owner=user?.id??null;const ids=idsOverride??(adapter?await adapter.list():readGuestLooks());let slugs=[];
-  if(owner&&signedActions.saves.size){try{const rows=requireSuccess(await client.from('outfit_posts').select('id,trend_slug').in('id',[...signedActions.saves]));slugs=rows.map(r=>r.trend_slug)}catch{}}
-  if((user?.id??null)===owner)window.VYBEUI?.setAccount(owner,ids,slugs);return ids;
+  const version=++tasteRefreshVersion,owner=user?.id??null;
+  const ids=idsOverride??(adapter?await adapter.list():readGuestLooks());
+  const signals={likes:[],saves:[]};
+  if(owner){
+    const all=[...new Set([...signedActions.likes,...signedActions.saves])],rows=[];
+    for(let i=0;i<all.length;i+=100){const batch=all.slice(i,i+100);rows.push(...requireSuccess(await client.from('outfit_posts').select('id,title,caption,trend_slug').in('id',batch)))}
+    signals.likes=rows.filter(r=>signedActions.likes.has(r.id));
+    signals.saves=rows.filter(r=>signedActions.saves.has(r.id));
+  }
+  if((user?.id??null)===owner&&version===tasteRefreshVersion)window.VYBEUI?.setAccount(owner,ids,signals);
+  return ids;
 }
+let focusRefresh=false;
+async function refreshOnReturn(){if(page!=='personal'||!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner)await refreshTaste(currentSavedAdapter)}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
+window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 async function loadSavedPage(adapter){
   const owner=user?.id??null;
   const ids=adapter?await adapter.list():readGuestLooks();
