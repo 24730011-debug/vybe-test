@@ -1,4 +1,3 @@
-document.documentElement.style.setProperty('--spread-photo', 'url("' + document.querySelector('.spread img').src + '")');
 const panel = document.querySelector('#panel');
 const body = document.querySelector('#panel-body');
 const title = document.querySelector('#panel-title');
