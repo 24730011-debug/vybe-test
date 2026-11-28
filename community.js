@@ -48,6 +48,7 @@ async function loadFeed(owner = null) {
     if (sort?.value === 'popular') request = client.rpc('vybe_ranked_outfits');
     const result = request ? await request : { data: [], count: 0 };
     let rows = requireSuccess(result);
+    if(page==='feed'){const target=location.hash.match(/^#post-([0-9a-f-]{36})$/i)?.[1];if(target&&!rows.some(r=>r.id===target)){const extra=await client.from('outfit_posts').select(columns).eq('id',target).maybeSingle();if(!extra.error&&extra.data)rows=[...rows,extra.data];}}
     if(page==='feed'){rows=rows.filter(row=>(feedFilter==='all'||(feedFilter==='trend'&&row.trend_slug)||(feedFilter==='personal'&&!row.trend_slug))&&(!specificTrend||row.trend_slug===specificTrend));}
     const likes = rows.length
       ? requireSuccess(await client.rpc('vybe_feed_counts', { post_ids: rows.map(row => row.id) }))
