@@ -9,3 +9,6 @@
 
 ## Night edit
 Demo posts have fixed fictional usernames, dates, and like counts; like/save interactions are browser-local and per account. Real member rows and demos are merged for sorting, with visible demo labels. Existing database remains untouched. Each seasonal trend has three styling suggestions; Faux Fur and Shearling have three outfit photographs, while remaining trends have one representative photograph and two text-first suggestions. New non-Faux-Fur styling saves are browser-local until a schema migration is added.
+
+## Personal edit
+Independent For You with Discover (all selected tag matches first; separate partial matches) and Made for You (weighted explicit selections and saved/liked signals), with occasion filter. Catalog contains 19 tagged demo outfits with generated photos. New York editorial photos added. All five seasonal trends have three pictured outfit suggestions. Demo taste, saves, likes remain browser-local. Home official faux fur details and selected shearling details include manually placed clothing hotspots. No real product prices or links invented. Shared nav, editorial and responsive masonry layout.
