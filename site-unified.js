@@ -30,12 +30,96 @@ function fillDetail(s){detail.dataset.sampleId=s.id;const h=el("h2","",s.title);
 function renderSamples(){refreshSavedCount();const feed=page==="feed"?document.querySelector("#posts"):null;if(feed){for(const old of feed.querySelectorAll("[data-demo]"))old.remove();const items=samples.filter(s=>s.source==="demo"&&(filter==="all"||(filter==="trend"&&s.trend)||(filter==="personal"&&!s.trend))&&(!specific||s.trend===specific));for(const s of items){const li=el("li");li.dataset.demo="true";li.dataset.date=s.date;li.dataset.likes=String(reactionCount(s));li.dataset.trend=s.trend||"";li.append(sampleCard(s));feed.append(li)}const sort=document.querySelector("#feed-sort")?.value;const rows=[...feed.children];for(const row of rows){const t=row.dataset.trend||"";row.hidden=!(filter==="all"||(filter==="trend"&&t)||(filter==="personal"&&!t))||Boolean(specific&&t!==specific)}rows.sort((a,b)=>(sort==="popular"?Number(b.dataset.likes||0)-Number(a.dataset.likes||0):0)||Date.parse(b.dataset.date||0)-Date.parse(a.dataset.date||0));feed.append(...rows);}
 const archive=document.querySelector("#sample-saved");if(archive){const saved=load("sample-saves");const demo=false;const ids=saved;const label=document.querySelector("#sample-saved-label");if(label)label.textContent=demo?"저장 화면 예시 2개 · DEMO":"스타일링 예시와 DEMO · 이 브라우저에 저장";archive.replaceChildren(...samples.filter(s=>ids.includes(s.id)).map(sampleCard));if(!archive.children.length)archive.append(el("p","fine-print","코디를 저장하면 여기에 표시돼요."));}
 renderTrendSaves();}
-const hotspots={"n0":[["브라운 페이크 퍼 재킷",66,29],["아이보리 니트",48,35],["워싱 데님",51,65],["숄더백",26,46]],"n1":[["브라운 페이크 퍼 재킷",69,31],["블랙 터틀넥",49,28],["차콜 슬랙스",51,66],["블랙 핸드백",73,58]],"n2":[["브라운 페이크 퍼 재킷",56,29],["버건디 미디스커트",53,60],["브라운 롱부츠",55,87],["블랙 숄더백",26,47]],"n3":[["브라운 무스탕",64,30],["크림 니트",50,33],["와이드 데님",53,68],["브라운 가방",26,47]],"n4":[["시어링 재킷",65,31],["그레이 니트와 화이트 셔츠",48,31],["차콜 슬랙스",53,68],["블랙 가방",27,72]],"n5":[["시어링 재킷",70,27],["블랙 새틴 드레스",50,49],["블랙 부츠",49,86]]};function attachHotspots(host,asset){const items=hotspots[asset];if(!host||!items)return;host.style.position="relative";const info=el("p","hotspot-description","사진의 +를 눌러 아이템을 확인하세요.");info.setAttribute("aria-live","polite");host.after(info);const controls=el("div","hotspot-layer");items.forEach(([name,x,y])=>{const b=el("button","hotspot-dot","+");b.type="button";b.style.left=x+"%";b.style.top=y+"%";b.setAttribute("aria-label",name);b.setAttribute("aria-pressed","false");b.onclick=()=>{controls.querySelectorAll("button").forEach(n=>n.setAttribute("aria-pressed",String(n===b)));info.textContent=name};controls.append(b)});host.append(controls);host.removeAttribute("role");host.removeAttribute("aria-label")};window.VYBEHotspots={attach:attachHotspots};const currentLook=document.querySelector("#panel .look-image");if(currentLook){const id=currentLook.dataset.look;attachHotspots(currentLook,{weekend:"n0",office:"n1",evening:"n2"}[id])}
-function showVariant(trend,i){recordView('trend:'+trend+'-'+i,trendTags[trend]||[]);const [asset,desc]=variants[trend][i];if(!asset)return;const t=trends.find(x=>x.id===trend);if(!detail){detail=el("dialog");detail.id="sample-detail";detail.setAttribute("aria-labelledby","sample-detail-title");document.body.append(detail)}const head=el("div","dialog-head"),h=el("h2","",t.title+" / "+occasions[i]),close=el("button","close","×");h.id="sample-detail-title";close.type="button";close.setAttribute("aria-label","닫기");close.onclick=()=>detail.close();head.append(h,close);const p=el("div","sample-photo lookbook-photo asset-"+asset);p.setAttribute("role","img");p.setAttribute("aria-label",desc);const body=el("p","",desc);detail.replaceChildren(head,p,body);if(!detail.open)detail.showModal();attachHotspots(p,asset)}
+function showVariant(trend, i) {
+  const [asset, desc, officialId] = variants[trend][i];
+  if (!asset) return;
+  if (officialId) {
+    showLook(officialId);
+    return;
+  }
+  recordView('trend:' + variantId(trend, i), trendTags[trend] || []);
+  const t = trends.find(item => item.id === trend);
+  if (!detail) {
+    detail = el("dialog");
+    detail.id = "sample-detail";
+    detail.setAttribute("aria-labelledby", "sample-detail-title");
+    document.body.append(detail);
+  }
+  delete detail.dataset.sampleId;
+  const head = el("div", "dialog-head");
+  const title = el("h2", "", t.title + " / " + occasions[i]);
+  title.id = "sample-detail-title";
+  const close = el("button", "close", "×");
+  close.type = "button";
+  close.setAttribute("aria-label", "닫기");
+  close.onclick = () => detail.close();
+  head.append(title, close);
+  const frame = el("div", "detail-outfit");
+  const image = photo({asset, desc});
+  frame.append(image);
+  window.VYBEOutfits.attach(frame, asset, image);
+  detail.replaceChildren(head, frame, el("p", "", desc), trendSaveButton(trend, i));
+  if (!detail.open) detail.showModal();
+  detail.scrollTop = 0;
+}
 function variantId(trend,i){return trend+"-"+i}
 function renderTrendSaves(){const saved=load("trend-saves");for(const b of document.querySelectorAll("[data-trend-save]")){const on=saved.includes(b.dataset.trendSave);b.textContent=on?"저장 해제":"저장";b.setAttribute("aria-pressed",String(on))}
-const root=document.querySelector("#trend-saved");if(root){root.replaceChildren();for(const [trend,arr] of Object.entries(variants))for(let i=0;i<arr.length;i++){const id=variantId(trend,i);if(saved.includes(id))root.append(variantCard(trend,i))}if(!root.children.length)root.append(el("p","fine-print","새로운 트렌드 코디를 저장해 보세요."))}}
-function variantCard(trend,i){const [asset,desc,home]=variants[trend][i];const card=el("article","variant-card");const h=el("h3","",occasions[i]);const t=trends.find(x=>x.id===trend);if(asset){const p=photo({asset,desc:t.ko+" "+occasions[i]+" 예시"});const open=el("button","sample-image-button");open.type="button";open.setAttribute("aria-label",t.ko+" "+occasions[i]+" 상세 보기");open.onclick=()=>{if(home)location.href="./?look="+home+"#looks";else showVariant(trend,i)};open.append(p);card.append(open)}else{const p=el("div","variant-text-only");p.append(el("span","variant-number","0"+(i+1)),el("span","fine-print","스타일링 제안"));card.append(p)}card.append(h,el("p","variant-trend",t.title),el("p","",desc));if(home){const link=el("a","text-link","상세 · 저장 →");link.href="./?look="+home+"#looks";card.append(link)}else{const b=el("button","sample-bookmark");b.type="button";b.dataset.trendSave=variantId(trend,i);const selected=load("trend-saves").includes(b.dataset.trendSave);b.textContent=selected?"저장 해제":"저장";b.setAttribute("aria-pressed",String(selected));b.onclick=()=>{const ids=load("trend-saves");if(store("trend-saves",ids.includes(b.dataset.trendSave)?ids.filter(x=>x!==b.dataset.trendSave):[...ids,b.dataset.trendSave])){renderTrendSaves();renderTaste()}else b.textContent="저장 실패"};card.append(b)}return card}
+const root=document.querySelector("#trend-saved");if(root){root.replaceChildren();for(const [trend,arr] of Object.entries(variants))for(let i=0;i<arr.length;i++){const id=variantId(trend,i);if(!arr[i][2]&&saved.includes(id))root.append(variantCard(trend,i))}if(!root.children.length)root.append(el("p","fine-print","새로운 트렌드 코디를 저장해 보세요."))}}
+function trendSaveButton(trend, i) {
+  const button = el("button", "sample-bookmark");
+  button.type = "button";
+  const id = button.dataset.trendSave = variantId(trend, i);
+  const selected = load("trend-saves").includes(id);
+  button.textContent = selected ? "저장 해제" : "저장";
+  button.setAttribute("aria-pressed", String(selected));
+  button.onclick = () => {
+    const ids = load("trend-saves");
+    if (store("trend-saves", ids.includes(id) ? ids.filter(item => item !== id) : [...ids, id])) {
+      renderTrendSaves();
+      renderTaste();
+    } else button.textContent = "저장 실패";
+  };
+  return button;
+}
+
+function outfitPhotoButton(image, asset, label, onOpen) {
+  const frame = el("div");
+  const open = el("button", "sample-image-button");
+  open.type = "button";
+  open.setAttribute("aria-label", label);
+  open.setAttribute("aria-haspopup", "dialog");
+  open.onclick = onOpen;
+  open.append(image);
+  frame.append(open);
+  window.VYBEOutfits.attach(frame, asset, image);
+  return frame;
+}
+
+function variantCard(trend, i) {
+  const [asset, desc, officialId] = variants[trend][i];
+  const t = trends.find(item => item.id === trend);
+  const card = el("article", "variant-card");
+  const label = t.ko + " " + occasions[i] + " 상세 보기";
+  const open = () => showVariant(trend, i);
+  if (asset) card.append(outfitPhotoButton(photo({asset, desc}), asset, label, open));
+  card.append(el("h3", "", occasions[i]), el("p", "variant-trend", t.title), el("p", "", desc));
+  if (officialId) {
+    const button = el("button", "text-link", "상세 · 저장");
+    button.type = "button";
+    button.onclick = open;
+    card.append(button);
+  } else card.append(trendSaveButton(trend, i));
+  return card;
+}
+
+for (const link of document.querySelectorAll(".trend-photo-link")) {
+  const trend = link.closest(".trend-card").id;
+  const [asset, desc] = variants[trend][0];
+  const frame = outfitPhotoButton(photo({asset, desc}), asset, desc + " 상세 보기", () => showVariant(trend, 0));
+  frame.classList.add("trend-photo-link");
+  link.replaceWith(frame);
+}
+
 for(const [trend,arr] of Object.entries(variants)){const target=document.querySelector("[data-trend-looks='"+trend+"']");if(target)target.append(...arr.map((_,i)=>variantCard(trend,i)))}
 document.querySelector("#feed-sort")?.addEventListener("change",renderSamples);
 document.addEventListener("vybe:feed-rendered",renderSamples);
@@ -97,12 +181,12 @@ const img=rows.length?await client.storage.from("outfit-photos").createSignedUrl
 document.querySelector("#home-search-open")?.addEventListener("click",()=>{searchResults();search.showModal();input.focus();void loadMemberSearch()});search.querySelector(".close").onclick=()=>search.close();input.oninput=searchResults;input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();remember(input.value);searchResults()}});document.addEventListener("vybe:search-ready",()=>{if(search.open)void loadMemberSearch()});
 for(const b of document.querySelectorAll("[data-feed-filter]"))b.onclick=()=>{filter=b.dataset.feedFilter;specific=null;document.querySelectorAll("[data-feed-filter]").forEach(n=>n.setAttribute("aria-pressed",String(n===b)));renderSamples();document.dispatchEvent(new CustomEvent("vybe:feed-filter",{detail:filter}))};
 if(page==="feed"&&specific){filter="trend";document.querySelectorAll("[data-feed-filter]").forEach(n=>n.setAttribute("aria-pressed",String(n.dataset.feedFilter==="trend")))}
-for(const a of document.querySelectorAll(".trend-photo-link"))a.addEventListener("click",()=>{const d=document.querySelector(a.getAttribute("href"));if(d)d.open=true});
 const file=document.querySelector("#outfit-photo"),preview=document.querySelector("#outfit-preview"),form=document.querySelector("#outfit-form");let objectUrl;
 function clearPreview(){if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;if(preview){preview.hidden=true;preview.removeAttribute("src");document.querySelector("#photo-name").textContent=""}}
 file?.addEventListener("change",()=>{clearPreview();const f=file.files?.[0];if(!f)return;const name=document.querySelector("#photo-name");if(f.size>5*1024*1024||!["image/jpeg","image/png","image/webp"].includes(f.type)){file.value="";name.textContent="JPG, PNG, WebP · 최대 5 MB 파일만 사용할 수 있어요.";return}objectUrl=URL.createObjectURL(f);preview.src=objectUrl;preview.hidden=false;name.textContent=f.name});form?.addEventListener("reset",clearPreview);
+document.addEventListener("vybe:editorial-saves",({detail})=>{if((detail.userId||null)===accountId){editorial=detail.ids;renderTaste()}});
 if(page==="home"){setAccount(null,guestLooks());let request=0,homeAdapter=null;async function refreshHome(){const id=++request,owner=accountId;try{const ids=homeAdapter?await homeAdapter.list():guestLooks();let signals={likes:[],saves:[]};const client=window.VYBESearchClient;if(owner&&client){const [l,v]=await Promise.all([client.from("outfit_likes").select("post_id").eq("user_id",owner),client.from("saved_outfits").select("post_id").eq("user_id",owner)]);if(l.error||v.error)throw Error("reactions");const likeIds=(l.data||[]).map(r=>r.post_id),saveIds=(v.data||[]).map(r=>r.post_id),all=[...new Set([...likeIds,...saveIds])],rows=[];for(let i=0;i<all.length;i+=100){const q=await client.from("outfit_posts").select("id,title,caption,trend_slug").in("id",all.slice(i,i+100));if(q.error)throw q.error;rows.push(...q.data)}signals={likes:rows.filter(r=>likeIds.includes(r.id)),saves:rows.filter(r=>saveIds.includes(r.id))}}if(id===request&&owner===accountId)setAccount(owner,ids,signals)}catch{if(id===request)refreshSavedCount()}}
-document.addEventListener("vybe:account",({detail})=>{homeAdapter=detail.savedLooks;setAccount(detail.userId,detail.userId?[]:guestLooks());setTimeout(refreshHome,0)});document.addEventListener("vybe:editorial-saves",({detail})=>{if((detail.userId||null)===accountId){editorial=detail.ids;renderTaste()}});window.addEventListener("focus",refreshHome);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshHome()});}
-else{renderSamples();renderTaste()}
+document.addEventListener("vybe:account",({detail})=>{homeAdapter=detail.savedLooks;setAccount(detail.userId,detail.userId?[]:guestLooks());setTimeout(refreshHome,0)});window.addEventListener("focus",refreshHome);document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshHome()});}
+else{editorial=guestLooks();renderSamples();renderTaste()}
 // Use stable responsive grid; natural image heights are preserved without JS row calculations.
 })();

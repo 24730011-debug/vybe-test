@@ -14,10 +14,6 @@ let account = null;
 let visibleLook = null;
 const activeSaved = () => account?.saved ?? guestSaved;
 
-function updateCount() {
-  document.querySelector('#count').textContent = account && !account.loaded ? '…' : activeSaved().size;
-}
-
 function updateLookControls() {
   const button = body.querySelector('[data-save]');
   if (!button || button.dataset.save !== visibleLook) return;
@@ -35,10 +31,12 @@ function showLook(id) {
   visibleLook = id;
   window.VYBEUI?.recordOfficialView(id);
   title.textContent = look.title;
-  body.innerHTML = '<div class="look-image" data-look="' + id + '" role="img" aria-label="' + look.title + ' outfit"></div><p>' + look.items + '</p><button class="save-button" data-save="' + id + '"></button><p role="status"></p><button class="save-button" data-retry-saved hidden>Try again</button>';
-  window.VYBEHotspots?.attach(body.querySelector('.look-image'),{weekend:'n0',office:'n1',evening:'n2'}[id]);
+  body.innerHTML = '<div class="look-image" data-look="' + id + '" role="group" aria-label="' + look.title + ' outfit"></div><p>' + look.items + '</p><button class="save-button" data-save="' + id + '"></button><p role="status"></p><button class="save-button" data-retry-saved hidden>Try again</button>';
+  const frame = body.querySelector('.look-image');
+  window.VYBEOutfits.attach(frame, look.asset);
   updateLookControls();
   if (!panel.open) panel.showModal();
+  panel.scrollTop = 0;
 }
 
 function renderSavedList() {
@@ -55,7 +53,6 @@ function renderSavedList() {
 }
 
 function refreshSavedUI() {
-  updateCount();
   document.dispatchEvent(new CustomEvent('vybe:editorial-saves',{detail:{userId:account?.id??null,ids:[...activeSaved()]}}));
   if (!panel.open) return;
   if (visibleLook) updateLookControls();
@@ -122,7 +119,7 @@ document.addEventListener('click', event => {
   if (button.dataset.save && Object.hasOwn(looks, button.dataset.save)) void toggleSave(button.dataset.save);
   if (button.hasAttribute('data-retry-saved') && account) void loadAccountSaves(account);
 });
-savedNav.addEventListener('click', () => {
+savedNav?.addEventListener('click', () => {
   if (location.protocol === 'file:') {
     visibleLook = null;
     title.textContent = 'Saved Looks';
@@ -132,24 +129,28 @@ savedNav.addEventListener('click', () => {
   }
   location.href = 'saved.html';
 });
+for (const frame of document.querySelectorAll('.home-outfit')) {
+  const button = frame.querySelector('.look-visual');
+  window.VYBEOutfits.attach(frame, looks[button.dataset.look].asset);
+}
+
 const requestedLook = new URLSearchParams(location.search).get('look');
 if (requestedLook && Object.hasOwn(looks, requestedLook)) showLook(requestedLook);
 panel.querySelector('.close').addEventListener('click', () => panel.close());
-document.querySelector('#pause').addEventListener('click', event => {
+document.querySelector('#pause')?.addEventListener('click', event => {
   const button = event.currentTarget;
   const paused = button.getAttribute('aria-pressed') !== 'true';
   document.querySelector('.hero').dataset.paused = String(paused);
   button.setAttribute('aria-pressed', String(paused));
   button.textContent = paused ? 'Play' : 'Pause';
 });
-updateCount();
 
 if (location.protocol === 'file:') {
-  document.querySelector('#account-open').addEventListener('click', () => {
+  document.querySelector('#account-open')?.addEventListener('click', () => {
     const account = document.querySelector('#account');
     document.querySelector('#auth-status').textContent = '회원 인증은 웹사이트 주소에서 이용할 수 있어요.';
     account.showModal();
   });
-  document.querySelector('#account-close').addEventListener('click', () => document.querySelector('#account').close());
+  document.querySelector('#account-close')?.addEventListener('click', () => document.querySelector('#account').close());
 }
 

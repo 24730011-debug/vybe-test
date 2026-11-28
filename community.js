@@ -453,6 +453,11 @@ try {
         }
       }, 0);
     }
+    if (page === 'trends') {
+      document.dispatchEvent(new CustomEvent('vybe:account', {
+        detail: { userId: user?.id ?? null, savedLooks },
+      }));
+    }
     if (!myPage) return;
     document.querySelector('#member').hidden = !user;
     document.querySelector('#login-link').hidden = Boolean(user);
