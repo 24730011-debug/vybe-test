@@ -4,6 +4,15 @@ const tags={minimal:"미니멀",feminine:"페미닌",highteen:"하이틴",chic:"
 const styleImages={minimal:"p6",feminine:"p0",highteen:"p1",chic:"p5",vintage:"p4",street:"p2",classic:"p8",romantic:"p3",casual:"n0"};const savedTags={weekend:["casual","texture","minimal"],office:["classic","minimal","texture"],evening:["feminine","texture"]};
 const variants={"faux-fur":[["n0","브라운 퍼 · 아이보리 니트 · 워싱 데님","weekend"],["n1","브라운 퍼 · 블랙 터틀넥 · 차콜 슬랙스","office"],["n2","브라운 퍼 · 버건디 미디스커트 · 롱부츠","evening"]],"shearling":[["n3","무스탕 · 크림 니트 · 와이드 데님"],["n4","무스탕 · 셔츠 · 차콜 슬랙스"],["n5","무스탕 · 블랙 새틴 드레스 · 앵클부츠"]],"high-neck":[["o2","차콜 하이넥 벨티드 코트 · 블랙 숄더백"],["p6","하이넥 울 코트 · 차콜 슬랙스 · 블랙 토트백"],["high-night","하이넥 코트 · 모노톤 액세서리"]],"knit-layer":[["o3","니트 베스트 · 화이트 셔츠 · 버건디 스커트"],["p7","차콜 니트 · 화이트 셔츠 · 테일러드 팬츠"],["p3","리본 카디건 · 더스티 로즈 미디스커트 · 부츠"]],"heritage-check":[["o4","아가일 니트 · 체크 스커트 · 타이츠"],["p8","체크 울 블레이저 · 블랙 터틀넥 · 슬랙스"],["p1","네이비 카디건 · 체크 미니스커트 · 로퍼"]]};const occasions=['Weekend','Office','Evening'];let accountId=null,editorial=[],memberTrends=[],memberSignals={likes:[],saves:[]},filter="all",specific=new URLSearchParams(location.search).get("trend"),ready=false;
 const page=document.querySelector("[data-page]")?.dataset.page||"home";
+const likedArchive = page === "saved" && new URLSearchParams(location.search).get("view") === "liked";
+if (likedArchive) {
+  document.title = "VYBE — Liked Looks";
+  document.querySelector("#archive-title").textContent = "Liked.";
+  for (const section of document.querySelectorAll("[data-saves-only]")) section.hidden = true;
+  const [saved, liked] = document.querySelectorAll(".archive-views a");
+  saved.removeAttribute("aria-current");
+  liked.setAttribute("aria-current", "page");
+}
 const key=(name)=>"vybe."+name+".v1."+(accountId||"guest");
 const load=(name)=>{try{const v=JSON.parse(localStorage.getItem(key(name))||"[]");return Array.isArray(v)?v:[]}catch{return[]}};
 const exists=(name)=>{try{return localStorage.getItem(key(name))!==null}catch{return false}};
@@ -28,7 +37,19 @@ let detail;
 function showSample(s){recordView(s.id,s.tags);if(!detail){detail=el("dialog");detail.id="sample-detail";detail.setAttribute("aria-labelledby","sample-detail-title");document.body.append(detail)}fillDetail(s);if(!detail.open)detail.showModal()}
 function fillDetail(s){detail.dataset.sampleId=s.id;const h=el("h2","",s.title);h.id="sample-detail-title";const close=el("button","close","×");close.type="button";close.setAttribute("aria-label","닫기");close.onclick=()=>detail.close();const head=el("div","dialog-head");head.append(h,close);const b=el("button","sample-bookmark",load("sample-saves").includes(s.id)?"저장 해제":"저장");b.type="button";b.onclick=()=>toggleSample(s.id,b);detail.replaceChildren(head,photo(s),el("p","",s.desc),el("p","fine-print",s.source==="demo"?"DEMO · 생성 이미지 및 가상 닉네임·반응 수":"VYBE 스타일링 예시 · 생성 이미지"),b,likeButton(s))}
 function renderSamples(){refreshSavedCount();const feed=page==="feed"?document.querySelector("#posts"):null;if(feed){for(const old of feed.querySelectorAll("[data-demo]"))old.remove();const items=samples.filter(s=>s.source==="demo"&&(filter==="all"||(filter==="trend"&&s.trend)||(filter==="personal"&&!s.trend))&&(!specific||s.trend===specific));for(const s of items){const li=el("li");li.dataset.demo="true";li.dataset.date=s.date;li.dataset.likes=String(reactionCount(s));li.dataset.trend=s.trend||"";li.append(sampleCard(s));feed.append(li)}const sort=document.querySelector("#feed-sort")?.value;const rows=[...feed.children];for(const row of rows){const t=row.dataset.trend||"";row.hidden=!(filter==="all"||(filter==="trend"&&t)||(filter==="personal"&&!t))||Boolean(specific&&t!==specific)}rows.sort((a,b)=>(sort==="popular"?Number(b.dataset.likes||0)-Number(a.dataset.likes||0):0)||Date.parse(b.dataset.date||0)-Date.parse(a.dataset.date||0));feed.append(...rows);}
-const archive=document.querySelector("#sample-saved");if(archive){const saved=load("sample-saves");const demo=false;const ids=saved;const label=document.querySelector("#sample-saved-label");if(label)label.textContent=demo?"저장 화면 예시 2개 · DEMO":"스타일링 예시와 DEMO · 이 브라우저에 저장";archive.replaceChildren(...samples.filter(s=>ids.includes(s.id)).map(sampleCard));if(!archive.children.length)archive.append(el("p","fine-print","코디를 저장하면 여기에 표시돼요."));}
+const archive = document.querySelector("#sample-saved");
+if (archive) {
+  const ids = load(likedArchive ? "demo-likes" : "sample-saves");
+  const label = document.querySelector("#sample-saved-label");
+  label.textContent = likedArchive ? "VYBE 스타일링 및 DEMO" : "스타일링 예시와 DEMO · 이 브라우저에 저장";
+  const archived = likedArchive
+    ? ids.map(id => samples.find(sample => sample.id === id)).filter(Boolean)
+    : samples.filter(sample => ids.includes(sample.id));
+  archive.replaceChildren(...archived.map(sampleCard));
+  if (!archive.children.length) {
+    archive.append(el("p", "fine-print", likedArchive ? "좋아요한 스타일링과 DEMO 코디가 없어요." : "코디를 저장하면 여기에 표시돼요."));
+  }
+}
 renderTrendSaves();}
 function showVariant(trend, i) {
   const [asset, desc, officialId] = variants[trend][i];
@@ -124,6 +145,19 @@ for(const [trend,arr] of Object.entries(variants)){const target=document.querySe
 document.querySelector("#feed-sort")?.addEventListener("change",renderSamples);
 document.addEventListener("vybe:feed-rendered",renderSamples);
 let tasteMode="discover",tasteOccasion="All";
+const tasteSort = document.querySelector("#taste-sort");
+tasteSort?.addEventListener("change", renderTaste);
+
+function sortRecommendations(results) {
+  if (tasteSort?.value === "popular") {
+    const liked = new Set(load("demo-likes"));
+    results.sort((a, b) => (b.s.likes || 0) + Number(liked.has(b.s.id))
+      - (a.s.likes || 0) - Number(liked.has(a.s.id)));
+  } else if (tasteSort?.value === "latest") {
+    results.sort((a, b) => (Date.parse(b.s.date) || 0) - (Date.parse(a.s.date) || 0));
+  }
+  return results;
+}
 const trendTags={"faux-fur":["texture","chic"],"shearling":["texture","classic"],"high-neck":["minimal","chic"],"knit-layer":["layering","casual"],"heritage-check":["vintage","classic","highteen"]};
 const memberKeywords={minimal:["미니멀","모노톤","무채색","간결","minimal","monochrome"],feminine:["페미닌","여성스","스커트","원피스","블라우스","feminine","skirt","dress"],highteen:["하이틴","프레피","니삭스","미니스커트","preppy","high teen"],chic:["시크","선글라스","올블랙","가죽","chic","leather"],vintage:["빈티지","레트로","아가일","vintage","retro","argyle"],street:["스트릿","스트리트","카고","봄버","후드","street","cargo","hoodie"],classic:["클래식","출근","슬랙스","블레이저","테일러드","classic","office","blazer"],romantic:["로맨틱","리본","레이스","핑크","romantic","ribbon","lace"],casual:["캐주얼","데님","청바지","스니커즈","편한","casual","denim","jeans"],texture:["퍼 재킷","퍼 자켓","무스탕","faux fur","shearling"],layering:["레이어","겹쳐","layering"],pattern:["체크","아가일","plaid","argyle"]};
 function inferMemberTags(row){const hay=[row.title,row.caption].filter(Boolean).join(" ").toLowerCase().replace(/\s+/g,"");return [...new Set([...(trendTags[row.trend_slug]||[]),...Object.entries(memberKeywords).filter(([_,words])=>words.some(w=>hay.includes(w.replace(/\s+/g,"")))).map(([t])=>t)])]}
@@ -137,7 +171,7 @@ function recommendationCard(s,rank,why=[]){const card=sampleCard(s);card.classLi
 function renderTaste(){refreshSavedCount();const prefs=load("taste").filter(t=>Object.hasOwn(tags,t));for(const section of document.querySelectorAll("[data-taste]")){const controls=section.querySelector(".taste-controls"),status=section.querySelector(".taste-status"),results=section.querySelector(".taste-results");if(!controls||!status||!results)continue;
 controls.replaceChildren(...Object.entries(tags).map(([tag,label])=>{const b=el("button","taste-tile");b.type="button";b.setAttribute("aria-pressed",String(prefs.includes(tag)));const text=el("span","taste-tile-label",label);b.append(text);b.onclick=()=>{const next=prefs.includes(tag)?prefs.filter(t=>t!==tag):[...prefs,tag];if(store("taste",next)){renderTaste();controls.querySelectorAll("button")[Object.keys(tags).indexOf(tag)]?.focus({preventScroll:true})}else status.textContent="취향을 저장하지 못했어요."};return b}));
 section.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===tasteMode)));section.querySelectorAll("[data-occasion]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.occasion===tasteOccasion)));
-const ranked=rankTaste(prefs,tasteMode,tasteOccasion);const exact=tasteMode==="discover"?ranked.filter(x=>x.coverage===1):ranked;const partial=tasteMode==="discover"?ranked.filter(x=>x.coverage<1):[];const top=exact.slice(0,9);const nearby=partial.slice(0,6);
+const ranked=rankTaste(prefs,tasteMode,tasteOccasion);const exact=tasteMode==="discover"?ranked.filter(x=>x.coverage===1):ranked;const partial=tasteMode==="discover"?ranked.filter(x=>x.coverage<1):[];const top=sortRecommendations(exact).slice(0,9);const nearby=sortRecommendations(partial).slice(0,6);
 status.textContent=tasteMode==="discover"?(prefs.length?(top.length?prefs.map(t=>tags[t]).join(" × ")+" · "+exact.length+"개 일치 코디":"모든 선택에 맞는 코디가 아직 없어요. 아래에서 비슷한 스타일을 확인하세요."):"마음에 드는 스타일을 하나 이상 골라보세요."):(ranked.length?"저장·좋아요·선호 스타일을 반영한 추천":"아직 취향 기록이 없어요. Discover에서 스타일을 선택하거나 코디를 저장해 보세요.");
 results.replaceChildren(...top.map(({s,why},i)=>recommendationCard(s,i,why)));const related=section.querySelector(".taste-related");const relatedSection=section.querySelector(".related-section");if(related&&relatedSection){relatedSection.hidden=!nearby.length;related.replaceChildren(...nearby.map(({s,why},i)=>recommendationCard(s,i,why)))}const stats=section.querySelector(".activity-summary");if(stats){const c=modelSignals(prefs).counts;stats.hidden=tasteMode!=="made";stats.textContent="반영된 활동 · 선호 스타일 "+c.prefs+" · 저장 "+c.saves+" · 좋아요 "+c.likes+" · 최근 본 코디 "+c.views+(accountId?(syncReady?" · 계정 동기화 연결":" · 취향·조회·DEMO는 이 브라우저"):" · 이 브라우저");}const choice=section.querySelector(".taste-choice");if(choice)choice.textContent=prefs.length?prefs.map(t=>tags[t]).join(" × "):"Your next look.";
 }}

@@ -6,6 +6,7 @@ const posts = document.querySelector('#posts');
 const feedStatus = document.querySelector('#feed-status');
 const postStatus = document.querySelector('#post-status');
 const page = document.querySelector('[data-page]').dataset.page;
+const likedArchive = page === 'saved' && new URLSearchParams(location.search).get('view') === 'liked';
 const myPage = page === 'my';
 const profileId = new URLSearchParams(location.search).get('id');
 const validProfile = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(profileId || '');
@@ -41,12 +42,25 @@ async function loadFeed(owner = null) {
     let request = client.from('outfit_posts').select(columns, { count: 'exact' })
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(24);
     if (owner) request = request.like('photo_path', owner + '/%');
-    if (page === 'saved') {
-      const ids = [...signedActions.saves];
-      request = ids.length ? request.in('id', ids) : null;
+    const archiveOwner = user?.id ?? null;
+    let result;
+    if (likedArchive) {
+      const ids = archiveOwner ? [...signedActions.likes] : [];
+      const batches = [];
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        batches.push(client.from('outfit_posts').select(columns).in('id', ids.slice(offset, offset + 100)));
+      }
+      const likedRows = (await Promise.all(batches)).flatMap(requireSuccess);
+      likedRows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+      result = { data: likedRows };
+    } else {
+      if (page === 'saved') {
+        const ids = [...signedActions.saves];
+        request = ids.length ? request.in('id', ids) : null;
+      }
+      if (sort?.value === 'popular') request = client.rpc('vybe_ranked_outfits');
+      result = request ? await request : { data: [], count: 0 };
     }
-    if (sort?.value === 'popular') request = client.rpc('vybe_ranked_outfits');
-    const result = request ? await request : { data: [], count: 0 };
     let rows = requireSuccess(result);
     if(page==='feed'){const target=location.hash.match(/^#post-([0-9a-f-]{36})$/i)?.[1];if(target&&!rows.some(r=>r.id===target)){const extra=await client.from('outfit_posts').select(columns).eq('id',target).maybeSingle();if(!extra.error&&extra.data)rows=[...rows,extra.data];}}
     if(page==='feed'){rows=rows.filter(row=>(feedFilter==='all'||(feedFilter==='trend'&&row.trend_slug)||(feedFilter==='personal'&&!row.trend_slug))&&(!specificTrend||row.trend_slug===specificTrend));}
@@ -58,7 +72,8 @@ async function loadFeed(owner = null) {
       ? requireSuccess(await client.storage.from(bucket).createSignedUrls(rows.map(row => row.photo_path), 3600))
       : [];
     const urls = new Map(images.map(item => [item.path, item.signedUrl]));
-    if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
+    if (requestId !== feedRequest || (myPage && user?.id !== owner) ||
+        (likedArchive && (user?.id ?? null) !== archiveOwner)) return;
     if (owner) ownPostsResult = result.count;
     posts.replaceChildren(...rows.map(row => {
       const item = document.createElement('li');
@@ -101,7 +116,9 @@ async function loadFeed(owner = null) {
       return item;
     }));
     if(page==='feed'){document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));const anchor=location.hash.slice(1);if(anchor.startsWith('post-'))requestAnimationFrame(()=>document.getElementById(anchor)?.scrollIntoView({block:'start'}));}
-    feedStatus.textContent = rows.length ? '' : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
+    feedStatus.textContent = rows.length ? '' : likedArchive
+      ? (archiveOwner ? '좋아요한 회원 코디가 없어요.' : '회원 코디에 누른 좋아요는 로그인 후 볼 수 있어요.')
+      : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
   } catch {
     if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
     feedStatus.textContent = '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
@@ -262,7 +279,7 @@ async function refreshTaste(adapter,idsOverride){
   return ids;
 }
 let focusRefresh=false;
-async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
+async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(likedArchive){await reloadPosts();await refreshTaste(currentSavedAdapter)}else if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
 window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 async function loadSavedPage(adapter){
   const owner=user?.id??null;
@@ -437,6 +454,11 @@ try {
     accountLink.textContent = user ? 'My VYBE' : 'Account';
     accountLink.href = user ? 'my.html' : './?account=1';
     if (previous !== user?.id || _event === 'INITIAL_SESSION') {
+      if (likedArchive) {
+        ++feedRequest;
+        posts.replaceChildren();
+        feedStatus.textContent = '';
+      }
       window.VYBEUI?.setAccount(user?.id??null,user?[]:readGuestLooks());
       setTimeout(async () => {
         const owner = currentUser?.id ?? null;
@@ -444,6 +466,11 @@ try {
         try {
           await loadReactions(owner);
           if ((user?.id ?? null) !== owner) return;
+          if (likedArchive) {
+            await reloadPosts();
+            await refreshTaste(savedLooks);
+            return;
+          }
           if (page === 'saved') await loadSavedPage(savedLooks);
           else await refreshTaste(savedLooks);
           if (!myPage && page !== 'trends' && page !== 'personal' && (page !== 'profile' || validProfile)) await reloadPosts();

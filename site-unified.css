@@ -318,3 +318,22 @@ dialog > .dialog-head > .close {
   font: 12px/1.4 var(--body, sans-serif);
   pointer-events: none;
 }
+
+.archive-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.archive-views a { padding: 8px 0; text-decoration: none; }
+.archive-views a[aria-current="page"] { border-bottom: 2px solid currentColor; }
+.taste-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.taste-sort select {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: inherit;
+  font: inherit;
+  min-height: 36px;
+  padding: 4px 8px;
+}
