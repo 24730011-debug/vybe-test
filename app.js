@@ -35,6 +35,7 @@ function showLook(id) {
   visibleLook = id;
   title.textContent = look.title;
   body.innerHTML = '<div class="look-image" data-look="' + id + '" role="img" aria-label="' + look.title + ' outfit"></div><p>' + look.items + '</p><button class="save-button" data-save="' + id + '"></button><p role="status"></p><button class="save-button" data-retry-saved hidden>Try again</button>';
+  window.VYBEHotspots?.attach(body.querySelector('.look-image'),{weekend:'n0',office:'n1',evening:'n2'}[id]);
   updateLookControls();
   if (!panel.open) panel.showModal();
 }
