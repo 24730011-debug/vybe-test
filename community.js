@@ -61,7 +61,7 @@ async function loadFeed(owner = null) {
     if (owner) ownPostsResult = result.count;
     posts.replaceChildren(...rows.map(row => {
       const item = document.createElement('li');
-      item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
+      item.id='post-'+row.id;item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
       const heading = document.createElement('h3');
       heading.textContent = row.title;
       const caption = document.createElement('p');
@@ -99,7 +99,7 @@ async function loadFeed(owner = null) {
       }
       return item;
     }));
-    if(page==='feed')document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));
+    if(page==='feed'){document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));const anchor=location.hash.slice(1);if(anchor.startsWith('post-'))requestAnimationFrame(()=>document.getElementById(anchor)?.scrollIntoView({block:'start'}));}
     feedStatus.textContent = rows.length ? '' : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
   } catch {
     if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
@@ -415,6 +415,7 @@ if (myPage) {
 try {
   currentAccount = await connectAuth();
   client = currentAccount.client;
+  window.VYBESearchClient=client;document.dispatchEvent(new CustomEvent('vybe:search-ready'));
   currentAccount.subscribe((_event, currentUser, savedLooks) => {
     const previous = user?.id;
     user = currentUser;
