@@ -264,3 +264,8 @@ img.sample-photo,[data-page=feed] #posts [data-demo] img.sample-photo,[data-page
 [data-page=feed] #posts,[data-page=saved] #posts,[data-page=saved] .sample-grid,[data-page=saved] .saved-editorial-grid{display:grid;grid-auto-rows:auto;align-items:start;grid-auto-flow:row}
 .activity-summary{font-size:12px;color:#555;padding:12px 0;border-bottom:1px solid var(--line);margin:10px 0 24px}
 .recommendation-reason{border-top:1px solid var(--line);padding-top:9px;margin-top:9px!important;font-size:11px!important;color:#50555c!important}
+
+/* Consistent personal reaction controls. */
+.look-like{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:5px 4px;border:0;background:none;color:#202226;cursor:pointer;font-size:12px;line-height:1}
+.look-like[aria-pressed=true]{color:#a1374b}.look-like:focus-visible{outline:2px solid currentColor;outline-offset:3px}.like-number{font-variant-numeric:tabular-nums}.personal-look .demo-reactions{justify-content:flex-start;margin-top:7px}.personal-look .demo-reactions .look-like{margin-right:8px}.vybe-nav #count{text-decoration:none!important}.vybe-nav .nav-saved[aria-current=page]{text-decoration:none!important}
+#sample-detail>.look-like{margin-left:12px;vertical-align:middle}
