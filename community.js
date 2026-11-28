@@ -44,20 +44,16 @@ async function loadFeed(owner = null) {
     if (owner) request = request.like('photo_path', owner + '/%');
     const archiveOwner = user?.id ?? null;
     let result;
-    if (likedArchive) {
-      const ids = archiveOwner ? [...signedActions.likes] : [];
+    if (page === 'saved') {
+      const ids = archiveOwner ? [...(likedArchive ? signedActions.likes : signedActions.saves)] : [];
       const batches = [];
       for (let offset = 0; offset < ids.length; offset += 100) {
         batches.push(client.from('outfit_posts').select(columns).in('id', ids.slice(offset, offset + 100)));
       }
-      const likedRows = (await Promise.all(batches)).flatMap(requireSuccess);
-      likedRows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
-      result = { data: likedRows };
+      const archiveRows = (await Promise.all(batches)).flatMap(requireSuccess);
+      archiveRows.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
+      result = { data: archiveRows };
     } else {
-      if (page === 'saved') {
-        const ids = [...signedActions.saves];
-        request = ids.length ? request.in('id', ids) : null;
-      }
       if (sort?.value === 'popular') request = client.rpc('vybe_ranked_outfits');
       result = request ? await request : { data: [], count: 0 };
     }
@@ -73,9 +69,9 @@ async function loadFeed(owner = null) {
       : [];
     const urls = new Map(images.map(item => [item.path, item.signedUrl]));
     if (requestId !== feedRequest || (myPage && user?.id !== owner) ||
-        (likedArchive && (user?.id ?? null) !== archiveOwner)) return;
+        (page === 'saved' && (user?.id ?? null) !== archiveOwner)) return;
     if (owner) ownPostsResult = result.count;
-    posts.replaceChildren(...rows.map(row => {
+    const cards = rows.map(row => {
       const item = document.createElement('li');
       item.id='post-'+row.id;item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
       const heading = document.createElement('h3');
@@ -114,11 +110,11 @@ async function loadFeed(owner = null) {
         item.append(trend);
       }
       return item;
-    }));
+    });
+    if (page === 'saved') window.VYBEUI.replaceArchiveCards('member', cards);
+    else posts.replaceChildren(...cards);
     if(page==='feed'){document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));const anchor=location.hash.slice(1);if(anchor.startsWith('post-'))requestAnimationFrame(()=>document.getElementById(anchor)?.scrollIntoView({block:'start'}));}
-    feedStatus.textContent = rows.length ? '' : likedArchive
-      ? (archiveOwner ? '좋아요한 회원 코디가 없어요.' : '회원 코디에 누른 좋아요는 로그인 후 볼 수 있어요.')
-      : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
+    feedStatus.textContent = rows.length || page === 'saved' || page === 'feed' ? '' : '아직 올린 코디가 없어요.';
   } catch {
     if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
     feedStatus.textContent = '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
@@ -279,21 +275,21 @@ async function refreshTaste(adapter,idsOverride){
   return ids;
 }
 let focusRefresh=false;
-async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(likedArchive){await reloadPosts();await refreshTaste(currentSavedAdapter)}else if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
+async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(likedArchive){await reloadPosts();await refreshTaste(currentSavedAdapter)}else if(page==='saved'){await Promise.all([loadSavedPage(currentSavedAdapter),reloadPosts()])}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
 window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 async function loadSavedPage(adapter){
   const owner=user?.id??null;
   const ids=adapter?await adapter.list():readGuestLooks();
   if((user?.id??null)!==owner)return;
   const names={weekend:'Weekend',office:'Office',evening:'Evening'};
-  const list=document.querySelector('#editorial-saved'),status=document.querySelector('#editorial-save-status');
-  list.replaceChildren(...ids.filter(id=>Object.hasOwn(names,id)).map(id=>{
+  const status=document.querySelector('#editorial-save-status');
+  status.textContent='';
+  window.VYBEUI.replaceArchiveCards('official', ids.filter(id=>Object.hasOwn(names,id)).map(id=>{
     const item=document.createElement('li'),link=document.createElement('a'),photo=document.createElement('span'),h=document.createElement('h3'),remove=document.createElement('button');
     link.href='./?look='+encodeURIComponent(id)+'#looks';photo.className='editorial-saved-photo saved-'+id;photo.setAttribute('role','img');photo.setAttribute('aria-label',names[id]+' 코디');h.textContent=names[id];link.append(photo,h);
-    remove.className='editorial-remove';remove.type='button';remove.textContent='저장 해제';remove.onclick=async()=>{remove.disabled=true;try{if((user?.id??null)!==owner)return;if(adapter)await adapter.set(id,false);else localStorage.setItem('vybe.winter.saved',JSON.stringify(readGuestLooks().filter(x=>x!==id)));if((user?.id??null)===owner){await loadSavedPage(adapter);status.textContent='저장을 해제했어요.'}}catch{status.textContent='저장을 해제하지 못했어요.'}finally{remove.disabled=false}};
+    remove.className='editorial-remove';remove.type='button';remove.textContent='저장 해제';remove.onclick=async()=>{remove.disabled=true;try{if((user?.id??null)!==owner)return;if(adapter)await adapter.set(id,false);else localStorage.setItem('vybe.winter.saved',JSON.stringify(readGuestLooks().filter(x=>x!==id)));if((user?.id??null)===owner){await loadSavedPage(adapter)}}catch{status.textContent='저장을 해제하지 못했어요.'}finally{remove.disabled=false}};
     item.append(link,remove);return item;
   }));
-  if(!list.children.length){const p=document.createElement('p');p.textContent='저장한 VYBE 에디토리얼이 없어요.';list.append(p)}
   await refreshTaste(adapter,ids);
 }
 document.addEventListener('vybe:feed-filter',event=>{feedFilter=event.detail;specificTrend=null;if(client&&page==='feed')void reloadPosts()});
@@ -443,10 +439,11 @@ try {
     accountLink.textContent = user ? 'My VYBE' : 'Account';
     accountLink.href = user ? 'my.html' : './?account=1';
     if (previous !== user?.id || _event === 'INITIAL_SESSION') {
-      if (likedArchive) {
+      if (page === 'saved') {
         ++feedRequest;
-        posts.replaceChildren();
-        feedStatus.textContent = '';
+        window.VYBEUI.replaceArchiveCards('member', []);
+        window.VYBEUI.replaceArchiveCards('official', []);
+        feedStatus.textContent = '코디를 불러오는 중…';
       }
       window.VYBEUI?.setAccount(user?.id??null,user?[]:readGuestLooks());
       setTimeout(async () => {
@@ -455,13 +452,11 @@ try {
         try {
           await loadReactions(owner);
           if ((user?.id ?? null) !== owner) return;
-          if (likedArchive) {
-            await reloadPosts();
-            await refreshTaste(savedLooks);
+          if (page === 'saved') {
+            await Promise.all([reloadPosts(), likedArchive ? refreshTaste(savedLooks) : loadSavedPage(savedLooks)]);
             return;
           }
-          if (page === 'saved') await loadSavedPage(savedLooks);
-          else await refreshTaste(savedLooks);
+          await refreshTaste(savedLooks);
           if (!myPage && page !== 'trends' && page !== 'personal' && (page !== 'profile' || validProfile)) await reloadPosts();
           if (myPage && user) await loadMember(owner);
         } catch {

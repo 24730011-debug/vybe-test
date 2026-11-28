@@ -8,7 +8,8 @@ const likedArchive = page === "saved" && new URLSearchParams(location.search).ge
 if (likedArchive) {
   document.title = "VYBE — Liked Looks";
   document.querySelector("#archive-title").textContent = "Liked.";
-  for (const section of document.querySelectorAll("[data-saves-only]")) section.hidden = true;
+  document.querySelector("#posts").setAttribute("aria-label", "좋아요한 코디");
+  document.querySelector("#archive-empty").textContent = "아직 좋아요한 코디가 없어요.";
   const [saved, liked] = document.querySelectorAll(".archive-views a");
   saved.removeAttribute("aria-current");
   liked.setAttribute("aria-current", "page");
@@ -37,18 +38,12 @@ let detail;
 function showSample(s){recordView(s.id,s.tags);if(!detail){detail=el("dialog");detail.id="sample-detail";detail.setAttribute("aria-labelledby","sample-detail-title");document.body.append(detail)}fillDetail(s);if(!detail.open)detail.showModal()}
 function fillDetail(s){detail.dataset.sampleId=s.id;const h=el("h2","",s.title);h.id="sample-detail-title";const close=el("button","close","×");close.type="button";close.setAttribute("aria-label","닫기");close.onclick=()=>detail.close();const head=el("div","dialog-head");head.append(h,close);const b=el("button","sample-bookmark",load("sample-saves").includes(s.id)?"저장 해제":"저장");b.type="button";b.onclick=()=>toggleSample(s.id,b);detail.replaceChildren(head,photo(s),el("p","",s.desc),el("p","fine-print",s.source==="demo"?"DEMO · 생성 이미지 및 가상 닉네임·반응 수":"VYBE 스타일링 예시 · 생성 이미지"),b,likeButton(s))}
 function renderSamples(){refreshSavedCount();const feed=page==="feed"?document.querySelector("#posts"):null;if(feed){for(const old of feed.querySelectorAll("[data-demo]"))old.remove();const items=samples.filter(s=>s.source==="demo"&&(filter==="all"||(filter==="trend"&&s.trend)||(filter==="personal"&&!s.trend))&&(!specific||s.trend===specific));for(const s of items){const li=el("li");li.dataset.demo="true";li.dataset.date=s.date;li.dataset.likes=String(reactionCount(s));li.dataset.trend=s.trend||"";li.append(sampleCard(s));feed.append(li)}const sort=document.querySelector("#feed-sort")?.value;const rows=[...feed.children];for(const row of rows){const t=row.dataset.trend||"";row.hidden=!(filter==="all"||(filter==="trend"&&t)||(filter==="personal"&&!t))||Boolean(specific&&t!==specific)}rows.sort((a,b)=>(sort==="popular"?Number(b.dataset.likes||0)-Number(a.dataset.likes||0):0)||Date.parse(b.dataset.date||0)-Date.parse(a.dataset.date||0));feed.append(...rows);}
-const archive = document.querySelector("#sample-saved");
-if (archive) {
+if (page === "saved") {
   const ids = load(likedArchive ? "demo-likes" : "sample-saves");
-  const label = document.querySelector("#sample-saved-label");
-  label.textContent = likedArchive ? "VYBE 스타일링 및 DEMO" : "스타일링 예시와 DEMO · 이 브라우저에 저장";
   const archived = likedArchive
     ? ids.map(id => samples.find(sample => sample.id === id)).filter(Boolean)
     : samples.filter(sample => ids.includes(sample.id));
-  archive.replaceChildren(...archived.map(sampleCard));
-  if (!archive.children.length) {
-    archive.append(el("p", "fine-print", likedArchive ? "좋아요한 스타일링과 DEMO 코디가 없어요." : "코디를 저장하면 여기에 표시돼요."));
-  }
+  replaceArchiveCards("sample", archived.map(sampleCard));
 }
 renderTrendSaves();}
 function showVariant(trend, i) {
@@ -83,9 +78,43 @@ function showVariant(trend, i) {
   if (!detail.open) detail.showModal();
   detail.scrollTop = 0;
 }
-function variantId(trend,i){return trend+"-"+i}
-function renderTrendSaves(){const saved=load("trend-saves");for(const b of document.querySelectorAll("[data-trend-save]")){const on=saved.includes(b.dataset.trendSave);b.textContent=on?"저장 해제":"저장";b.setAttribute("aria-pressed",String(on))}
-const root=document.querySelector("#trend-saved");if(root){root.replaceChildren();for(const [trend,arr] of Object.entries(variants))for(let i=0;i<arr.length;i++){const id=variantId(trend,i);if(!arr[i][2]&&saved.includes(id))root.append(variantCard(trend,i))}if(!root.children.length)root.append(el("p","fine-print","새로운 트렌드 코디를 저장해 보세요."))}}
+const archiveSources = ["official", "member", "trend", "sample"];
+function replaceArchiveCards(source, cards) {
+  const list = document.querySelector("[data-page=saved] #posts");
+  if (!list) return;
+  for (const item of [...list.children]) {
+    if (item.dataset.archiveSource === source) item.remove();
+  }
+  const next = [...list.children].find(item =>
+    archiveSources.indexOf(item.dataset.archiveSource) > archiveSources.indexOf(source));
+  const fragment = document.createDocumentFragment();
+  fragment.append(...cards.map(card => {
+    const item = card.tagName === "LI" ? card : el("li");
+    if (item !== card) item.append(card);
+    item.dataset.archiveSource = source;
+    return item;
+  }));
+  list.insertBefore(fragment, next || null);
+}
+
+function variantId(trend, i) { return trend + "-" + i; }
+function renderTrendSaves() {
+  const saved = load("trend-saves");
+  for (const button of document.querySelectorAll("[data-trend-save]")) {
+    const on = saved.includes(button.dataset.trendSave);
+    button.textContent = on ? "저장 해제" : "저장";
+    button.setAttribute("aria-pressed", String(on));
+  }
+  if (page === "saved" && !likedArchive) {
+    const cards = [];
+    for (const [trend, entries] of Object.entries(variants)) {
+      entries.forEach((entry, i) => {
+        if (!entry[2] && saved.includes(variantId(trend, i))) cards.push(variantCard(trend, i));
+      });
+    }
+    replaceArchiveCards("trend", cards);
+  }
+}
 function trendSaveButton(trend, i) {
   const button = el("button", "sample-bookmark");
   button.type = "button";
@@ -177,7 +206,7 @@ results.replaceChildren(...top.map(({s,why},i)=>recommendationCard(s,i,why)));co
 }}
 for(const b of document.querySelectorAll("[data-mode]"))b.onclick=()=>{tasteMode=b.dataset.mode;renderTaste()};for(const b of document.querySelectorAll("[data-occasion]"))b.onclick=()=>{tasteOccasion=b.dataset.occasion;renderTaste()};document.querySelector("#clear-taste")?.addEventListener("click",()=>{if(store("taste",[]))renderTaste()});
 function setAccount(owner,ids,signals={likes:[],saves:[]}){const next=owner||null;accountId=next;editorial=Array.isArray(ids)?ids:[];memberSignals={likes:Array.isArray(signals.likes)?signals.likes:[],saves:Array.isArray(signals.saves)?signals.saves:[]};ready=true;void syncPreferenceState(accountId);refreshSavedCount();renderSamples();renderTaste()}
-window.VYBEUI={setAccount,renderSamples,renderTaste,refreshSavedCount,recordMemberView:row=>recordView('member:'+row.id,inferMemberTags(row)),recordOfficialView:id=>recordView('official:'+id,savedTags[id]||[])};
+window.VYBEUI={replaceArchiveCards,setAccount,renderSamples,renderTaste,refreshSavedCount,recordMemberView:row=>recordView('member:'+row.id,inferMemberTags(row)),recordOfficialView:id=>recordView('official:'+id,savedTags[id]||[])};
 window.addEventListener('storage',e=>{if(e.key&&e.key.startsWith('vybe.')){renderSamples();renderTaste()}});window.addEventListener('focus',()=>{renderSamples();renderTaste()});
 const nav=document.querySelector(".vybe-nav"),hero=document.querySelector(".hero"),logo=document.querySelector(".wordmark");
 if(hero){const sync=()=>nav.classList.toggle("is-scrolled",hero.getBoundingClientRect().bottom<=nav.offsetHeight+10);window.addEventListener("scroll",sync,{passive:true});window.addEventListener("resize",sync);sync();if(logo){try{if(sessionStorage.getItem("vybe.logo.seen")){logo.querySelectorAll("i").forEach(n=>n.style.animation="none");logo.querySelector(".logo-spark").style.display="none"}else sessionStorage.setItem("vybe.logo.seen","1")}catch{}}}
