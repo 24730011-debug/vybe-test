@@ -4,8 +4,6 @@ const form = document.querySelector('#outfit-form');
 const submit = form?.querySelector('button');
 const posts = document.querySelector('#posts');
 const feedStatus = document.querySelector('#feed-status');
-const likedPosts = document.querySelector('#liked-member-posts');
-const likedStatus = document.querySelector('#liked-member-status');
 const postStatus = document.querySelector('#post-status');
 const page = document.querySelector('[data-page]').dataset.page;
 const likedArchive = page === 'saved' && new URLSearchParams(location.search).get('view') === 'liked';
@@ -15,7 +13,7 @@ const validProfile = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(profi
 const sort = document.querySelector('#feed-sort');
 const statusForActions = document.querySelector('#feed-status');
 const signedActions = { likes: new Set(), saves: new Set() };
-const feedRequests = new WeakMap();
+let feedRequest = 0;
 let feedFilter = new URLSearchParams(location.search).get('trend') ? 'trend' : 'all';
 let specificTrend = new URLSearchParams(location.search).get('trend');
 const authStatus = document.querySelector('#member-status');
@@ -37,20 +35,16 @@ function requireSuccess(result) {
   return result.data;
 }
 
-async function loadFeed(owner = null, archive = likedArchive, list = posts, status = feedStatus) {
-  const requestId = (feedRequests.get(list) || 0) + 1;
-  feedRequests.set(list, requestId);
-  const archiveOwner = user?.id ?? null;
-  const isCurrent = () => requestId === feedRequests.get(list) &&
-    (!myPage || archive || user?.id === owner) &&
-    (!archive || (user?.id ?? null) === archiveOwner);
-  status.textContent = '코디를 불러오는 중…';
+async function loadFeed(owner = null) {
+  const requestId = ++feedRequest;
+  feedStatus.textContent = '코디를 불러오는 중…';
   try {
     let request = client.from('outfit_posts').select(columns, { count: 'exact' })
       .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(24);
     if (owner) request = request.like('photo_path', owner + '/%');
+    const archiveOwner = user?.id ?? null;
     let result;
-    if (archive) {
+    if (likedArchive) {
       const ids = archiveOwner ? [...signedActions.likes] : [];
       const batches = [];
       for (let offset = 0; offset < ids.length; offset += 100) {
@@ -78,11 +72,12 @@ async function loadFeed(owner = null, archive = likedArchive, list = posts, stat
       ? requireSuccess(await client.storage.from(bucket).createSignedUrls(rows.map(row => row.photo_path), 3600))
       : [];
     const urls = new Map(images.map(item => [item.path, item.signedUrl]));
-    if (!isCurrent()) return;
+    if (requestId !== feedRequest || (myPage && user?.id !== owner) ||
+        (likedArchive && (user?.id ?? null) !== archiveOwner)) return;
     if (owner) ownPostsResult = result.count;
-    list.replaceChildren(...rows.map(row => {
+    posts.replaceChildren(...rows.map(row => {
       const item = document.createElement('li');
-      item.id=(list === likedPosts ? 'liked-post-' : 'post-')+row.id;item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
+      item.id='post-'+row.id;item.dataset.date=row.created_at||'';item.dataset.likes=String(totals.get(row.id)||0);item.dataset.trend=row.trend_slug||'';
       const heading = document.createElement('h3');
       heading.textContent = row.title;
       const caption = document.createElement('p');
@@ -111,7 +106,7 @@ async function loadFeed(owner = null, archive = likedArchive, list = posts, stat
       like.setAttribute('aria-pressed', String(signedActions.likes.has(row.id)));
       save.setAttribute('aria-pressed', String(signedActions.saves.has(row.id)));
       actions.append(like, save);
-      if (myPage && !archive) actions.append(makeAction('수정', () => editPost(row)), makeAction('삭제', () => deletePost(row)));
+      if (myPage) actions.append(makeAction('수정', () => editPost(row)), makeAction('삭제', () => deletePost(row)));
       item.append(actions);
       if (Object.hasOwn(trends, row.trend_slug)) {
         const trend = document.createElement('small');
@@ -121,13 +116,12 @@ async function loadFeed(owner = null, archive = likedArchive, list = posts, stat
       return item;
     }));
     if(page==='feed'){document.dispatchEvent(new CustomEvent('vybe:feed-rendered'));const anchor=location.hash.slice(1);if(anchor.startsWith('post-'))requestAnimationFrame(()=>document.getElementById(anchor)?.scrollIntoView({block:'start'}));}
-    status.textContent = rows.length ? '' : archive
+    feedStatus.textContent = rows.length ? '' : likedArchive
       ? (archiveOwner ? '좋아요한 회원 코디가 없어요.' : '회원 코디에 누른 좋아요는 로그인 후 볼 수 있어요.')
       : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'':'아직 올린 코디가 없어요.';
   } catch {
-    if (!isCurrent()) return;
-    status.textContent = archive ? '좋아요한 회원 코디를 불러오지 못했어요. 페이지를 새로고침해 주세요.'
-      : '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
+    if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
+    feedStatus.textContent = '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
   }
 }
 
@@ -174,10 +168,6 @@ async function reloadPosts() {
   if (myPage && user) renderCounts();
 }
 
-async function loadMyLikes() {
-  if (likedPosts) await loadFeed(null, true, likedPosts, likedStatus);
-}
-
 async function changeReaction(button, table, selected, postId) {
   if (!user) { location.href = './?account=1'; return; }
   const owner = user.id;
@@ -190,11 +180,10 @@ async function changeReaction(button, table, selected, postId) {
     if (user?.id !== owner) return;
     if (selected.has(postId)) selected.delete(postId);
     else selected.add(postId);
-    await Promise.all([reloadPosts(), loadMyLikes()]);
+    await reloadPosts();
     await refreshTaste(currentSavedAdapter);
   } catch {
-    const status = button.closest('#liked-member-posts') ? likedStatus : statusForActions;
-    status.textContent = '변경하지 못했어요. 다시 시도해 주세요.';
+    statusForActions.textContent = '변경하지 못했어요. 다시 시도해 주세요.';
   } finally {
     button.disabled = false;
   }
@@ -290,7 +279,7 @@ async function refreshTaste(adapter,idsOverride){
   return ids;
 }
 let focusRefresh=false;
-async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(likedArchive){await reloadPosts();await refreshTaste(currentSavedAdapter)}else if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await Promise.all([refreshTaste(currentSavedAdapter),loadMyLikes()])}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
+async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(likedArchive){await reloadPosts();await refreshTaste(currentSavedAdapter)}else if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
 window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 async function loadSavedPage(adapter){
   const owner=user?.id??null;
@@ -350,12 +339,10 @@ form?.addEventListener('submit', async event => {
 });
 
 
-let savedCount = null;
 
 function renderCounts() {
   const counts = [];
   if (Number.isInteger(ownPostsResult)) counts.push('내 게시물 ' + ownPostsResult);
-  if (Number.isInteger(savedCount)) counts.push('저장한 콘텐츠 ' + savedCount);
   document.querySelector('#counts').textContent = counts.join(' · ');
 }
 
@@ -373,18 +360,9 @@ function renderProfile() {
   avatar.replaceChildren(image);
 }
 
-async function loadMember(owner, savedLooks) {
+async function loadMember(owner) {
   await Promise.all([
     reloadPosts(),
-    (async () => {
-      try {
-        const ids = await savedLooks.list();
-        if (user?.id !== owner) return;
-        savedCount = ids.length;
-      } catch {
-        if (user?.id === owner) savedCount = null;
-      }
-    })(),
     (async () => {
       try {
         const data = requireSuccess(await client.from('profiles').select('nickname,avatar_path').eq('user_id', owner).maybeSingle());
@@ -465,11 +443,10 @@ try {
     accountLink.textContent = user ? 'My VYBE' : 'Account';
     accountLink.href = user ? 'my.html' : './?account=1';
     if (previous !== user?.id || _event === 'INITIAL_SESSION') {
-      const reactionList = likedArchive ? posts : likedPosts;
-      if (reactionList) {
-        feedRequests.set(reactionList, (feedRequests.get(reactionList) || 0) + 1);
-        reactionList.replaceChildren();
-        (likedArchive ? feedStatus : likedStatus).textContent = '좋아요한 코디를 불러오는 중…';
+      if (likedArchive) {
+        ++feedRequest;
+        posts.replaceChildren();
+        feedStatus.textContent = '';
       }
       window.VYBEUI?.setAccount(user?.id??null,user?[]:readGuestLooks());
       setTimeout(async () => {
@@ -483,16 +460,11 @@ try {
             await refreshTaste(savedLooks);
             return;
           }
-          if (myPage) {
-            await Promise.all([loadMyLikes(), refreshTaste(savedLooks), owner ? loadMember(owner, savedLooks) : null]);
-            return;
-          }
           if (page === 'saved') await loadSavedPage(savedLooks);
           else await refreshTaste(savedLooks);
           if (!myPage && page !== 'trends' && page !== 'personal' && (page !== 'profile' || validProfile)) await reloadPosts();
-
+          if (myPage && user) await loadMember(owner);
         } catch {
-          if (likedStatus) likedStatus.textContent = '좋아요한 회원 코디를 불러오지 못했어요.';
           if(authStatus||feedStatus)(authStatus || feedStatus).textContent = '정보를 불러오지 못했어요. 새로고침해 주세요.';
         }
       }, 0);
@@ -508,7 +480,7 @@ try {
     if (!user || previous !== user.id) {
       authStatus.textContent = user ? '' : 'My VYBE를 보려면 로그인해 주세요.';
       profile = null;
-      ownPostsResult = savedCount = null;
+      ownPostsResult = null;
       renderCounts();
       renderProfile();
       posts.replaceChildren();
@@ -529,6 +501,5 @@ try {
   }
 } catch {
   if (authStatus || feedStatus) (authStatus || feedStatus).textContent = 'VYBE에 연결하지 못했어요. 새로고침해 주세요.';
-  if (likedStatus) likedStatus.textContent = '좋아요한 회원 코디를 불러오지 못했어요.';
   window.VYBEUI?.setAccount(null,readGuestLooks());
 }

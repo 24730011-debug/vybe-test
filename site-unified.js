@@ -37,18 +37,17 @@ let detail;
 function showSample(s){recordView(s.id,s.tags);if(!detail){detail=el("dialog");detail.id="sample-detail";detail.setAttribute("aria-labelledby","sample-detail-title");document.body.append(detail)}fillDetail(s);if(!detail.open)detail.showModal()}
 function fillDetail(s){detail.dataset.sampleId=s.id;const h=el("h2","",s.title);h.id="sample-detail-title";const close=el("button","close","×");close.type="button";close.setAttribute("aria-label","닫기");close.onclick=()=>detail.close();const head=el("div","dialog-head");head.append(h,close);const b=el("button","sample-bookmark",load("sample-saves").includes(s.id)?"저장 해제":"저장");b.type="button";b.onclick=()=>toggleSample(s.id,b);detail.replaceChildren(head,photo(s),el("p","",s.desc),el("p","fine-print",s.source==="demo"?"DEMO · 생성 이미지 및 가상 닉네임·반응 수":"VYBE 스타일링 예시 · 생성 이미지"),b,likeButton(s))}
 function renderSamples(){refreshSavedCount();const feed=page==="feed"?document.querySelector("#posts"):null;if(feed){for(const old of feed.querySelectorAll("[data-demo]"))old.remove();const items=samples.filter(s=>s.source==="demo"&&(filter==="all"||(filter==="trend"&&s.trend)||(filter==="personal"&&!s.trend))&&(!specific||s.trend===specific));for(const s of items){const li=el("li");li.dataset.demo="true";li.dataset.date=s.date;li.dataset.likes=String(reactionCount(s));li.dataset.trend=s.trend||"";li.append(sampleCard(s));feed.append(li)}const sort=document.querySelector("#feed-sort")?.value;const rows=[...feed.children];for(const row of rows){const t=row.dataset.trend||"";row.hidden=!(filter==="all"||(filter==="trend"&&t)||(filter==="personal"&&!t))||Boolean(specific&&t!==specific)}rows.sort((a,b)=>(sort==="popular"?Number(b.dataset.likes||0)-Number(a.dataset.likes||0):0)||Date.parse(b.dataset.date||0)-Date.parse(a.dataset.date||0));feed.append(...rows);}
-const archive = document.querySelector("#sample-saved, #liked-samples");
+const archive = document.querySelector("#sample-saved");
 if (archive) {
-  const showLikes = likedArchive || archive.id === "liked-samples";
-  const ids = load(showLikes ? "demo-likes" : "sample-saves");
+  const ids = load(likedArchive ? "demo-likes" : "sample-saves");
   const label = document.querySelector("#sample-saved-label");
-  if (label) label.textContent = showLikes ? "VYBE 스타일링 및 DEMO" : "스타일링 예시와 DEMO · 이 브라우저에 저장";
-  const archived = showLikes
+  label.textContent = likedArchive ? "VYBE 스타일링 및 DEMO" : "스타일링 예시와 DEMO · 이 브라우저에 저장";
+  const archived = likedArchive
     ? ids.map(id => samples.find(sample => sample.id === id)).filter(Boolean)
     : samples.filter(sample => ids.includes(sample.id));
   archive.replaceChildren(...archived.map(sampleCard));
   if (!archive.children.length) {
-    archive.append(el("p", "fine-print", showLikes ? "좋아요한 스타일링과 DEMO 코디가 없어요." : "코디를 저장하면 여기에 표시돼요."));
+    archive.append(el("p", "fine-print", likedArchive ? "좋아요한 스타일링과 DEMO 코디가 없어요." : "코디를 저장하면 여기에 표시돼요."));
   }
 }
 renderTrendSaves();}
