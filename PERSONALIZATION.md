@@ -1,0 +1,8 @@
+# VYBE personalization v0.1
+
+- Trends and seasonal Editorial are shared; For You is a separate content-based recommender.
+- Catalog: six explicitly marked generated outfit examples with style tags. Trend articles have linked global and Korean sources. These are not real member posts, sales rankings, or fake reaction metrics.
+- User signals: chosen preference tags (+3), actual saved editorial IDs (+2 per tag), saved demo catalog items (+1), saved member posts with known trend (+2 per mapped tag). Rank by sum of tag weights divided by square root of tag count; no recommendation when all scores are zero. No training or inference API. Taste and sample bookmarks are scoped to browser and user/guest ID; actual existing Supabase saved editorial/member records remain in existing DB. The two preview cards on Saved do not count as user saves or recommendation signals.
+- Current database only supports the existing faux-fur trend for new member posts; extra editorial trends are source-backed static content. No schema changes in this release. Future: migrate taste preferences, normalized trend taxonomy and interactions to database; measure precision/recall and diversity on opt-in evaluation data.
+- Generated sample photographs are not claimed to be real member uploads. Real member feed remains separate; sort/filter uses existing DB and currently loaded records. No fabricated likes or members. Upload composer previews one photo and preserves existing 5 MB constraints.
+- Sources checked 2026-11-28. Miu Miu campaign/collection as layout reference only: https://www.miumiu.com/kr/ko/miumiu-club/campaigns/fw26-campaign.html .
