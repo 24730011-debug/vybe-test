@@ -262,7 +262,7 @@ async function refreshTaste(adapter,idsOverride){
   return ids;
 }
 let focusRefresh=false;
-async function refreshOnReturn(){if(page!=='personal'||!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner)await refreshTaste(currentSavedAdapter)}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
+async function refreshOnReturn(){if(!client||!currentAccount||focusRefresh||document.visibilityState==='hidden')return;focusRefresh=true;try{const owner=user?.id??null;await loadReactions(owner);if((user?.id??null)===owner){if(page==='saved'){await loadSavedPage(currentSavedAdapter);await reloadPosts()}else await refreshTaste(currentSavedAdapter)}}catch{const status=document.querySelector('#feed-status');if(status)status.textContent='최신 회원 활동을 불러오지 못했어요. 다시 시도해 주세요.'}finally{focusRefresh=false}}
 window.addEventListener('focus',refreshOnReturn);document.addEventListener('visibilitychange',refreshOnReturn);
 async function loadSavedPage(adapter){
   const owner=user?.id??null;
