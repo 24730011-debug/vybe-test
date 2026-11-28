@@ -13,11 +13,14 @@ const sort = document.querySelector('#feed-sort');
 const statusForActions = document.querySelector('#feed-status');
 const signedActions = { likes: new Set(), saves: new Set() };
 let feedRequest = 0;
+let feedFilter = new URLSearchParams(location.search).get('trend') ? 'trend' : 'all';
+let specificTrend = new URLSearchParams(location.search).get('trend');
 const authStatus = document.querySelector('#member-status');
 const accountLink = document.querySelector('[data-account]');
 const profileForm = document.querySelector('#profile-form');
 let profile = null;
 let currentAccount = null;
+let currentSavedAdapter = null;
 let ownPostsResult;
 const trends = { 'faux-fur': '페이크 퍼 아우터' };
 const extensions = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -44,7 +47,8 @@ async function loadFeed(owner = null) {
     }
     if (sort?.value === 'popular') request = client.rpc('vybe_ranked_outfits');
     const result = request ? await request : { data: [], count: 0 };
-    const rows = requireSuccess(result);
+    let rows = requireSuccess(result);
+    if(page==='feed'){rows=rows.filter(row=>(feedFilter==='all'||(feedFilter==='trend'&&row.trend_slug)||(feedFilter==='personal'&&!row.trend_slug))&&(!specificTrend||row.trend_slug===specificTrend));}
     const likes = rows.length
       ? requireSuccess(await client.rpc('vybe_feed_counts', { post_ids: rows.map(row => row.id) }))
       : [];
@@ -67,6 +71,7 @@ async function loadFeed(owner = null) {
         image.src = url;
         image.alt = row.title;
         image.loading = 'lazy';
+        image.tabIndex=0; image.setAttribute('role','button'); image.setAttribute('aria-label',row.title+' 상세 보기');image.addEventListener('click',()=>showPost(row,url));image.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showPost(row,url)}});
         image.addEventListener('error', () => image.replaceWith('사진을 불러올 수 없어요.'), { once: true });
         item.append(image);
       } else item.append('사진을 불러올 수 없어요.');
@@ -93,7 +98,7 @@ async function loadFeed(owner = null) {
       }
       return item;
     }));
-    feedStatus.textContent = rows.length ? '' : '아직 등록된 코디가 없어요.';
+    feedStatus.textContent = rows.length ? '' : page==='saved'?'저장한 회원 코디가 없어요.':page==='feed'?'아직 표시할 실제 회원 코디가 없어요. 아래 샘플을 둘러보세요.':'아직 올린 코디가 없어요.';
   } catch {
     if (requestId !== feedRequest || (myPage && user?.id !== owner)) return;
     feedStatus.textContent = '피드를 불러오지 못했어요. 페이지를 새로고침해 주세요.';
@@ -155,6 +160,7 @@ async function changeReaction(button, table, selected, postId) {
     if (selected.has(postId)) selected.delete(postId);
     else selected.add(postId);
     await reloadPosts();
+    if(table==='saved_outfits')await refreshTaste(currentSavedAdapter);
   } catch {
     statusForActions.textContent = '변경하지 못했어요. 다시 시도해 주세요.';
   } finally {
@@ -236,26 +242,28 @@ async function loadReactions(owner) {
   signedActions.saves = new Set(next[1]?.map(row => row.post_id));
 }
 
-async function loadSavedPage(adapter) {
-  let ids;
-  if (adapter) ids = await adapter.list();
-  else {
-    try { ids = JSON.parse(localStorage.getItem('vybe.winter.saved') || '[]'); }
-    catch { ids = []; }
-  }
-  const names = { weekend: 'Weekend', office: 'Office', evening: 'Evening' };
-  const list = document.querySelector('#editorial-saved');
-  list.replaceChildren(...(Array.isArray(ids) ? ids : []).filter(id => Object.hasOwn(names,id)).map(id => {
-    const item = document.createElement('li');
-    const link = document.createElement('a');
-    link.href = './?look=' + encodeURIComponent(id) + '#looks';
-    link.textContent = names[id];
-    item.append(link);
-    return item;
-  }));
-  if (!list.children.length) list.textContent = '저장한 추천 코디가 없어요.';
+function readGuestLooks(){try{const v=JSON.parse(localStorage.getItem('vybe.winter.saved')||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+async function refreshTaste(adapter,idsOverride){
+  const owner=user?.id??null;const ids=idsOverride??(adapter?await adapter.list():readGuestLooks());let slugs=[];
+  if(owner&&signedActions.saves.size){try{const rows=requireSuccess(await client.from('outfit_posts').select('id,trend_slug').in('id',[...signedActions.saves]));slugs=rows.map(r=>r.trend_slug)}catch{}}
+  if((user?.id??null)===owner)window.VYBEUI?.setAccount(owner,ids,slugs);return ids;
 }
-
+async function loadSavedPage(adapter){
+  const owner=user?.id??null;
+  const ids=adapter?await adapter.list():readGuestLooks();
+  if((user?.id??null)!==owner)return;
+  const names={weekend:'Weekend',office:'Office',evening:'Evening'};
+  const list=document.querySelector('#editorial-saved'),status=document.querySelector('#editorial-save-status');
+  list.replaceChildren(...ids.filter(id=>Object.hasOwn(names,id)).map(id=>{
+    const item=document.createElement('li'),link=document.createElement('a'),photo=document.createElement('span'),h=document.createElement('h3'),remove=document.createElement('button');
+    link.href='./?look='+encodeURIComponent(id)+'#looks';photo.className='editorial-saved-photo saved-'+id;photo.setAttribute('role','img');photo.setAttribute('aria-label',names[id]+' 코디');h.textContent=names[id];link.append(photo,h);
+    remove.className='editorial-remove';remove.type='button';remove.textContent='저장 해제';remove.onclick=async()=>{remove.disabled=true;try{if((user?.id??null)!==owner)return;if(adapter)await adapter.set(id,false);else localStorage.setItem('vybe.winter.saved',JSON.stringify(readGuestLooks().filter(x=>x!==id)));if((user?.id??null)===owner){await loadSavedPage(adapter);status.textContent='저장을 해제했어요.'}}catch{status.textContent='저장을 해제하지 못했어요.'}finally{remove.disabled=false}};
+    item.append(link,remove);return item;
+  }));
+  if(!list.children.length){const p=document.createElement('p');p.textContent='저장한 VYBE 에디토리얼이 없어요.';list.append(p)}
+  await refreshTaste(adapter,ids);
+}
+document.addEventListener('vybe:feed-filter',event=>{feedFilter=event.detail;specificTrend=null;if(client&&page==='feed')void reloadPosts()});
 sort?.addEventListener('change', () => void reloadPosts());
 
 form?.addEventListener('submit', async event => {
@@ -408,9 +416,11 @@ try {
   currentAccount.subscribe((_event, currentUser, savedLooks) => {
     const previous = user?.id;
     user = currentUser;
+    currentSavedAdapter=savedLooks;
     accountLink.textContent = user ? 'My VYBE' : 'Account';
     accountLink.href = user ? 'my.html' : './?account=1';
     if (previous !== user?.id || _event === 'INITIAL_SESSION') {
+      window.VYBEUI?.setAccount(user?.id??null,user?[]:readGuestLooks());
       setTimeout(async () => {
         const owner = currentUser?.id ?? null;
         if ((user?.id ?? null) !== owner) return;
@@ -418,6 +428,7 @@ try {
           await loadReactions(owner);
           if ((user?.id ?? null) !== owner) return;
           if (page === 'saved') await loadSavedPage(savedLooks);
+          else await refreshTaste(savedLooks);
           if (!myPage && page !== 'trends' && (page !== 'profile' || validProfile)) await reloadPosts();
           if (myPage && user) await loadMember(owner, savedLooks);
         } catch {
@@ -452,4 +463,5 @@ try {
   }
 } catch {
   if (authStatus || feedStatus) (authStatus || feedStatus).textContent = 'VYBE에 연결하지 못했어요. 새로고침해 주세요.';
+  window.VYBEUI?.setAccount(null,readGuestLooks());
 }
