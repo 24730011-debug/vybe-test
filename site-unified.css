@@ -328,12 +328,8 @@ dialog > .dialog-head > .close {
 }
 .archive-views a { padding: 8px 0; text-decoration: none; }
 .archive-views a[aria-current="page"] { border-bottom: 2px solid currentColor; }
-.taste-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
-.taste-sort select {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  color: inherit;
-  font: inherit;
-  min-height: 36px;
-  padding: 4px 8px;
-}
+.taste-toolbar { margin: 26px 0 20px; }
+.taste-toolbar .sort-label { flex-shrink: 0; }
+#liked-looks { scroll-margin-top: calc(var(--nav-height) + 16px); }
+#liked-looks > h3 { margin: 20px 0 10px; }
+#liked-member-status { font-size: 12px; color: #666; }
