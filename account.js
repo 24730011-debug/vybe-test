@@ -101,6 +101,7 @@ signOut.addEventListener('click', async () => {
 try {
   if (!['https:', 'http:'].includes(location.protocol)) throw new Error('HTTP host required');
   auth = await connectAuth();
+  window.VYBESearchClient=auth.client;document.dispatchEvent(new CustomEvent('vybe:search-ready'));
   auth.subscribe((event, currentUser, savedLooks) => {
     document.dispatchEvent(new CustomEvent('vybe:account', {
       detail: { userId: currentUser?.id ?? null, savedLooks }
