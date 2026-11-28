@@ -6,3 +6,6 @@
 - Current database only supports the existing faux-fur trend for new member posts; extra editorial trends are source-backed static content. No schema changes in this release. Future: migrate taste preferences, normalized trend taxonomy and interactions to database; measure precision/recall and diversity on opt-in evaluation data.
 - Generated sample photographs are not claimed to be real member uploads. Real member feed remains separate; sort/filter uses existing DB and currently loaded records. No fabricated likes or members. Upload composer previews one photo and preserves existing 5 MB constraints.
 - Sources checked 2026-11-28. Miu Miu campaign/collection as layout reference only: https://www.miumiu.com/kr/ko/miumiu-club/campaigns/fw26-campaign.html .
+
+## Night edit
+Demo posts have fixed fictional usernames, dates, and like counts; like/save interactions are browser-local and per account. Real member rows and demos are merged for sorting, with visible demo labels. Existing database remains untouched. Each seasonal trend has three styling suggestions; Faux Fur and Shearling have three outfit photographs, while remaining trends have one representative photograph and two text-first suggestions. New non-Faux-Fur styling saves are browser-local until a schema migration is added.
