@@ -55,6 +55,7 @@ function renderSavedList() {
 
 function refreshSavedUI() {
   updateCount();
+  document.dispatchEvent(new CustomEvent('vybe:editorial-saves',{detail:{userId:account?.id??null,ids:[...activeSaved()]}}));
   if (!panel.open) return;
   if (visibleLook) updateLookControls();
   else renderSavedList();
@@ -151,14 +152,3 @@ if (location.protocol === 'file:') {
   document.querySelector('#account-close').addEventListener('click', () => document.querySelector('#account').close());
 }
 
-const feedLink = document.createElement('a');
-feedLink.href = 'feed.html';
-feedLink.className = 'quiet';
-feedLink.textContent = 'Feed';
-feedLink.style.textDecoration = 'none';
-savedNav.before(feedLink);
-
-const trendsLink = feedLink.cloneNode(false);
-trendsLink.href = 'trends.html';
-trendsLink.textContent = 'Trends';
-feedLink.before(trendsLink);
